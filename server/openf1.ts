@@ -82,10 +82,12 @@ export type OpenF1Driver = {
   first_name?: string;
   last_name?: string;
   full_name?: string;
+  broadcast_name?: string;
   name_acronym?: string;
   team_name?: string;
   team_colour?: string;
   session_key?: number;
+  meeting_key?: number;
 };
 
 export type OpenF1Position = {

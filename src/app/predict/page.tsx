@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PredictClient } from "@/components/PredictClient";
 import { PageHeading } from "@/components/SiteChrome";
 import {
@@ -12,6 +13,8 @@ import {
 import { listPicks, scorePicks } from "@/lib/predictions";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Predict" };
 
 export default async function PredictPage() {
   const [calendar, standings, last] = await Promise.all([

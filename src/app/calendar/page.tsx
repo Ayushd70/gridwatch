@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeading } from "@/components/SiteChrome";
 import { currentTime, fetchCalendar, nextOrCurrentRace, raceDate } from "@/lib/jolpica";
 import { formatWhen } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Calendar" };
 
 export default async function CalendarPage() {
   const { season, races } = await fetchCalendar();

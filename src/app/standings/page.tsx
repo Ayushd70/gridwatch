@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeading } from "@/components/SiteChrome";
 import {
   constructorColor,
@@ -7,6 +8,8 @@ import {
 import { teamSwatch } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Standings" };
 
 export default async function StandingsPage() {
   const [drivers, constructors] = await Promise.all([

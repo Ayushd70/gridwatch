@@ -1,5 +1,7 @@
 # Gridwatch
 
+<img src="public/logo.png" width="72" height="72" alt="Gridwatch">
+
 Unofficial timing board I put together for race weekends. Positions, gaps, tyres, the championship after the last round, and a simple podium pick with friends.
 
 Live at [gridwatch.ayushd70.dev](https://gridwatch.ayushd70.dev). The portfolio on [ayushd70.dev](https://ayushd70.dev) is a different site.

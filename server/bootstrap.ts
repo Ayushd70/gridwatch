@@ -32,7 +32,7 @@ export async function fillStoreFromRest(
   options: BootstrapOptions = {},
 ): Promise<boolean> {
   const token = options.token;
-  const pause = options.pauseMs ?? (options.lean ? 250 : 400);
+  const pause = options.pauseMs ?? 400;
 
   try {
     const sessions = await openf1Get<OpenF1Session[]>(
@@ -60,11 +60,8 @@ export async function fillStoreFromRest(
     let usedSessionResult = false;
     const fetches: Array<() => Promise<void>> = [
       async () => {
-        const drivers = await openf1Get<OpenF1Driver[]>(
-          `/v1/drivers?session_key=${key}`,
-          token,
-        );
-        store.applyDrivers(drivers, "rest");
+        const drivers = await loadDrivers(key, session.meeting_key, token);
+        if (drivers.length) store.applyDrivers(drivers, "rest");
       },
       async () => {
         try {
@@ -124,15 +121,16 @@ export async function fillStoreFromRest(
       },
     ];
 
-    if (!options.lean) {
-      fetches.push(async () => {
-        const laps = await openf1Get<OpenF1Lap[]>(
-          `/v1/laps?session_key=${key}`,
-          token,
-        );
-        store.applyLaps(laps, "rest");
-      });
-    }
+    fetches.push(async () => {
+      const total = store.get().lap?.total;
+      if (options.lean && !total) return;
+      const path =
+        total != null
+          ? `/v1/laps?session_key=${key}&lap_number>=${Math.max(1, total - 1)}`
+          : `/v1/laps?session_key=${key}`;
+      const laps = await openf1Get<OpenF1Lap[]>(path, token);
+      if (laps.length) store.applyLaps(laps, "rest");
+    });
 
     if (isRace) {
       fetches.push(async () => {
@@ -157,6 +155,20 @@ export async function fillStoreFromRest(
         await fetchOne();
       } catch (error) {
         console.warn("REST partial fetch failed", error);
+      }
+    }
+
+    if (
+      store
+        .get()
+        .rows.some((row) => !row.teamName || row.name.startsWith("#"))
+    ) {
+      await sleep(pause);
+      try {
+        const drivers = await loadDrivers(key, session.meeting_key, token);
+        if (drivers.length) store.applyDrivers(drivers, "rest");
+      } catch (error) {
+        console.warn("driver retry failed", error);
       }
     }
 
@@ -198,4 +210,28 @@ export async function buildRestSnapshot(
   const store = new TimingStore();
   await fillStoreFromRest(store, options);
   return store.get();
+}
+
+async function loadDrivers(
+  sessionKey: number | string,
+  meetingKey: number | string | undefined,
+  token?: string,
+): Promise<OpenF1Driver[]> {
+  const paths = [
+    `/v1/drivers?session_key=${sessionKey}`,
+    meetingKey != null ? `/v1/drivers?meeting_key=${meetingKey}` : null,
+  ].filter((path): path is string => Boolean(path));
+
+  for (const path of paths) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const drivers = await openf1Get<OpenF1Driver[]>(path, token);
+        if (drivers.length) return drivers;
+      } catch (error) {
+        console.warn(`drivers ${path} attempt ${attempt + 1} failed`, error);
+        await sleep(600);
+      }
+    }
+  }
+  return [];
 }

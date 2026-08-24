@@ -57,11 +57,32 @@ function latestBy<T>(
     const nextTime = time(item);
     const prevTime = time(current);
     if (nextTime == null) continue;
-    if (prevTime == null || String(nextTime) >= String(prevTime)) {
+    if (prevTime == null || isLater(nextTime, prevTime)) {
       map.set(id, item);
     }
   }
   return map;
+}
+
+/** Numeric fields must not be compared as strings ("9" > "72"). */
+function isLater(
+  next: string | number,
+  prev: string | number,
+): boolean {
+  const a = sortable(next);
+  const b = sortable(prev);
+  if (typeof a === "number" && typeof b === "number") return a >= b;
+  return String(next) >= String(prev);
+}
+
+function sortable(value: string | number): string | number {
+  if (typeof value === "number") return value;
+  const trimmed = value.trim();
+  if (trimmed !== "" && !/[T:-]/.test(trimmed)) {
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) return numeric;
+  }
+  return value;
 }
 
 export class TimingStore {
@@ -93,6 +114,9 @@ export class TimingStore {
   }
 
   applySession(session: OpenF1Session, source: TimingSource) {
+    if (this.session && this.session.session_key !== session.session_key) {
+      this.resetTiming();
+    }
     this.session = session;
     this.rebuild(source);
   }
@@ -105,12 +129,10 @@ export class TimingStore {
   applyDrivers(drivers: OpenF1Driver[], source: TimingSource) {
     for (const driver of drivers) {
       const row = this.ensure(driver.driver_number);
-      row.name =
-        driver.full_name ??
-        [driver.first_name, driver.last_name].filter(Boolean).join(" ") ??
-        row.name;
-      row.acronym = driver.name_acronym ?? row.acronym;
-      row.teamName = driver.team_name ?? row.teamName;
+      const name = displayName(driver);
+      if (name) row.name = name;
+      if (driver.name_acronym) row.acronym = driver.name_acronym;
+      if (driver.team_name) row.teamName = driver.team_name;
       row.teamColor = normalizeColor(driver.team_colour) ?? row.teamColor;
     }
     this.rebuild(source);
@@ -174,20 +196,37 @@ export class TimingStore {
   }
 
   applyLaps(laps: OpenF1Lap[], source: TimingSource) {
-    const latest = latestBy(
-      laps,
-      (item) => item.driver_number,
-      (item) => item.lap_number ?? item.date_start,
-    );
-    for (const item of latest.values()) {
-      const row = this.ensure(item.driver_number);
-      row.lapNumber = item.lap_number ?? row.lapNumber;
-      row.lastLap = item.lap_duration ?? row.lastLap;
-      row.sectors = [
-        item.duration_sector_1 ?? row.sectors[0],
-        item.duration_sector_2 ?? row.sectors[1],
-        item.duration_sector_3 ?? row.sectors[2],
-      ];
+    const grouped = new Map<number, OpenF1Lap[]>();
+    for (const item of laps) {
+      const list = grouped.get(item.driver_number);
+      if (list) list.push(item);
+      else grouped.set(item.driver_number, [item]);
+    }
+    for (const [driverNumber, items] of grouped) {
+      const row = this.ensure(driverNumber);
+      let maxLap = row.lapNumber ?? 0;
+      let lastCompleted: OpenF1Lap | null = null;
+      for (const item of items) {
+        if (item.lap_number != null && item.lap_number > maxLap) {
+          maxLap = item.lap_number;
+        }
+        if (item.lap_duration == null) continue;
+        if (
+          !lastCompleted ||
+          (item.lap_number ?? 0) >= (lastCompleted.lap_number ?? 0)
+        ) {
+          lastCompleted = item;
+        }
+      }
+      if (maxLap) row.lapNumber = maxLap;
+      if (lastCompleted) {
+        row.lastLap = lastCompleted.lap_duration ?? row.lastLap;
+        row.sectors = [
+          lastCompleted.duration_sector_1 ?? row.sectors[0],
+          lastCompleted.duration_sector_2 ?? row.sectors[1],
+          lastCompleted.duration_sector_3 ?? row.sectors[2],
+        ];
+      }
     }
     this.rebuild(source);
   }
@@ -357,6 +396,14 @@ export class TimingStore {
       (max, row) => Math.max(max, row.lapNumber ?? 0),
       0,
     );
+    const sessionEnded =
+      this.session?.date_end != null &&
+      Date.parse(this.session.date_end) < Date.now();
+    const totalLaps = this.snapshot.lap?.total ?? (currentLap || null);
+    const displayLap =
+      sessionEnded && totalLaps
+        ? Math.max(currentLap, totalLaps)
+        : currentLap;
 
     const championship = [...this.championship.values()]
       .map((row) => {
@@ -427,10 +474,10 @@ export class TimingStore {
             dateStart: this.session.date_start,
           }
         : this.snapshot.session,
-      lap: currentLap
+      lap: displayLap
         ? {
-            current: currentLap,
-            total: this.snapshot.lap?.total ?? currentLap,
+            current: displayLap,
+            total: totalLaps,
           }
         : this.snapshot.lap,
       rows,
@@ -438,6 +485,16 @@ export class TimingStore {
       updatedAt: new Date().toISOString(),
     };
     this.queueEmit();
+  }
+
+  private resetTiming() {
+    this.drivers.clear();
+    this.championship.clear();
+    this.teams.clear();
+    this.pits = [];
+    this.weather = null;
+    const { authenticated, restricted, notice } = this.snapshot;
+    this.snapshot = emptySnapshot({ authenticated, restricted, notice });
   }
 
   private queueEmit() {
@@ -448,6 +505,19 @@ export class TimingStore {
       for (const listener of this.listeners) listener(snapshot);
     }, 200);
   }
+}
+
+function displayName(driver: OpenF1Driver) {
+  const first = driver.first_name?.trim();
+  const last = driver.last_name?.trim();
+  if (first && last) return `${first} ${last}`;
+  if (driver.full_name?.trim()) return titleLastName(driver.full_name.trim());
+  if (driver.broadcast_name?.trim()) return titleLastName(driver.broadcast_name.trim());
+  return "";
+}
+
+function titleLastName(value: string) {
+  return value.replace(/\b([A-Z]{2,})\b/g, (word) => word[0] + word.slice(1).toLowerCase());
 }
 
 function normalizeColor(value?: string) {

@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { buildRestSnapshot } from "../../server/bootstrap";
 import { fetchOpenF1Token } from "../../server/openf1";
 import { emptySnapshot, type TimingSnapshot } from "../../shared/timing";
+import { fillMissingIdentities } from "@/lib/driver-identities";
 
 async function fromIngest(): Promise<TimingSnapshot | null> {
   const ingest = process.env.INGEST_URL;
@@ -27,9 +28,9 @@ const restSnapshot = unstable_cache(
         console.warn("OpenF1 login skipped", error);
       }
     }
-    return buildRestSnapshot({ token, lean: true });
+    return fillMissingIdentities(await buildRestSnapshot({ token, lean: true }));
   },
-  ["openf1-rest-snapshot"],
+  ["openf1-rest-snapshot-v3"],
   { revalidate: 30 },
 );
 

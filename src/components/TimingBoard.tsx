@@ -8,7 +8,7 @@ import {
   tyreClass,
   tyreCode,
 } from "@/lib/format";
-import type { TeamChampionshipRow, TimingSnapshot } from "../../shared/timing";
+import type { TeamChampionshipRow, TimingRow, TimingSnapshot } from "../../shared/timing";
 import { emptySnapshot } from "../../shared/timing";
 
 const WS_URL = process.env.NEXT_PUBLIC_INGEST_WS ?? "";
@@ -85,6 +85,8 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
 
   const weather = snapshot.weather;
   const live = snapshot.mode === "live";
+  const finishedRace = isFinishedRace(snapshot);
+  const podium = finishedRace ? snapshot.rows.slice(0, 3) : [];
 
   return (
     <div className="space-y-5">
@@ -100,7 +102,7 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
             <p className="mt-2 text-sm text-muted">
               {snapshot.session?.name ?? "No OpenF1 session loaded"}
               {snapshot.lap
-                ? ` · Lap ${snapshot.lap.current}${snapshot.lap.total ? ` / ${snapshot.lap.total}` : ""}`
+                ? ` · ${finishedRace ? "Finished · " : ""}Lap ${snapshot.lap.current}${snapshot.lap.total ? ` / ${snapshot.lap.total}` : ""}`
                 : ""}
               {snapshot.lastFlag ? ` · ${snapshot.lastFlag}` : ""}
             </p>
@@ -148,12 +150,14 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
         ) : null}
       </section>
 
+      {podium.length === 3 ? <Podium rows={podium} /> : null}
+
       {snapshot.championship.length > 0 ? (
         <ChampionshipStrip
           title="Drivers championship"
           items={snapshot.championship.map((row) => ({
             key: String(row.driverNumber),
-            label: row.acronym,
+            label: /^\d+$/.test(row.acronym) ? row.name : row.acronym,
             sub: `P${row.positionCurrent}`,
             points: row.pointsCurrent,
             delta: row.pointsCurrent - row.pointsStart,
@@ -182,7 +186,7 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
             <tr className="border-b border-border">
               <th className="px-3 py-3 text-left font-medium">P</th>
               <th className="px-3 py-3 text-left font-medium">Driver</th>
-              <th className="hidden px-3 py-3 text-left font-medium md:table-cell">
+              <th className="hidden px-3 py-3 text-left font-medium sm:table-cell">
                 Team
               </th>
               <th className="px-3 py-3 text-right font-medium">Lap</th>
@@ -228,21 +232,33 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
                     <PositionMark n={row.position} />
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <span
-                        className="h-5 w-1.5 rounded-full"
+                        className="h-8 w-1.5 shrink-0 rounded-full"
                         style={{ background: teamSwatch(row.teamColor) }}
                       />
-                      <span className="font-display text-lg tracking-wide text-foreground">
-                        {row.acronym}
-                      </span>
-                      <span className="hidden text-muted lg:inline">
-                        {row.name}
-                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-baseline gap-x-2">
+                          <span className="font-mono text-xs text-subtle">
+                            #{row.driverNumber}
+                          </span>
+                          {row.acronym && row.acronym !== String(row.driverNumber) ? (
+                            <span className="font-display text-lg tracking-wide text-foreground">
+                              {row.acronym}
+                            </span>
+                          ) : null}
+                          <span className="text-sm text-foreground">{row.name}</span>
+                        </div>
+                        {row.teamName ? (
+                          <div className="text-xs text-muted sm:hidden">
+                            {row.teamName}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </td>
-                  <td className="hidden px-3 py-2.5 text-muted md:table-cell">
-                    {row.teamName}
+                  <td className="hidden px-3 py-2.5 text-muted sm:table-cell">
+                    {row.teamName || "—"}
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono text-muted">
                     {row.lapNumber ?? "—"}
@@ -308,6 +324,59 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
         </section>
       ) : null}
     </div>
+  );
+}
+
+function isFinishedRace(snapshot: TimingSnapshot) {
+  const label = `${snapshot.session?.type ?? ""} ${snapshot.session?.name ?? ""}`;
+  if (!/race/i.test(label) || snapshot.rows.length < 3) return false;
+  if (snapshot.mode === "live") return false;
+  const total = snapshot.lap?.total;
+  const current = snapshot.lap?.current;
+  const distanceDone = total != null && current != null && current >= total;
+  const chequered = /chequered|checkered/i.test(
+    `${snapshot.lastFlag ?? ""} ${snapshot.trackStatus ?? ""}`,
+  );
+  return distanceDone || chequered;
+}
+
+function Podium({ rows }: { rows: TimingRow[] }) {
+  const cards = [
+    { row: rows[0], order: "order-1 sm:order-2 sm:-translate-y-1" },
+    { row: rows[1], order: "order-2 sm:order-1 sm:translate-y-4" },
+    { row: rows[2], order: "order-3 sm:order-3 sm:translate-y-6" },
+  ];
+  return (
+    <section className="panel p-5 sm:p-6">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">
+        Podium
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3 sm:items-end">
+        {cards.map(({ row, order }) =>
+          row ? (
+            <div
+              key={row.driverNumber}
+              className={`rounded-2xl bg-surface-2 px-4 py-4 ${order}`}
+              style={{ boxShadow: `inset 4px 0 0 ${teamSwatch(row.teamColor)}` }}
+            >
+              <div className="flex items-center gap-2">
+                <PositionMark n={row.position} />
+                <span className="font-display text-lg tracking-wide text-foreground">
+                  {row.acronym && row.acronym !== String(row.driverNumber)
+                    ? row.acronym
+                    : row.name}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-foreground">{row.name}</p>
+              <p className="text-xs text-muted">{row.teamName || "—"}</p>
+              <p className="mt-3 font-mono text-sm text-foreground">
+                {row.position === 1 ? "Winner" : formatGap(row.gapToLeader)}
+              </p>
+            </div>
+          ) : null,
+        )}
+      </div>
+    </section>
   );
 }
 

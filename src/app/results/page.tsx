@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeading } from "@/components/SiteChrome";
 import { formatWhen } from "@/lib/format";
@@ -16,6 +17,8 @@ import {
 import { teamSwatch } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Results" };
 
 export default async function ResultsPage({
   searchParams,
