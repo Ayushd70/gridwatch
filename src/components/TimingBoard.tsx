@@ -144,7 +144,7 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
           </div>
         ) : null}
         {snapshot.notice ? (
-          <p className="mt-4 rounded-xl border border-accent/25 bg-accent/10 px-3 py-2 text-sm text-foreground">
+          <p className="mt-4 rounded-xl border border-border bg-surface-2 px-3 py-2 text-sm text-foreground">
             {snapshot.notice}
           </p>
         ) : null}
@@ -356,7 +356,7 @@ function Podium({ rows }: { rows: TimingRow[] }) {
           row ? (
             <div
               key={row.driverNumber}
-              className={`rounded-2xl bg-surface-2 px-4 py-4 ${order}`}
+              className={`rounded-2xl border border-border bg-surface px-4 py-4 ${order}`}
               style={{ boxShadow: `inset 4px 0 0 ${teamSwatch(row.teamColor)}` }}
             >
               <div className="flex items-center gap-2">
@@ -436,7 +436,7 @@ function ChampionshipStrip({
         {items.slice(0, 8).map((row) => (
           <div
             key={row.key}
-            className="w-40 rounded-xl bg-surface-2 px-3 py-2.5"
+            className="w-40 rounded-xl border border-border bg-surface px-3 py-2.5"
             style={{ boxShadow: `inset 3px 0 0 ${teamSwatch(row.color)}` }}
           >
             <div className="flex items-baseline justify-between gap-2">

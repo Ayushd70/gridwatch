@@ -53,7 +53,7 @@ export default async function ResultsPage({
               href={`/results?round=${item.round}`}
               className={`rounded-full px-3 py-1 text-xs transition ${
                 active
-                  ? "bg-accent/15 font-medium text-accent"
+                  ? "bg-foreground font-medium text-background dark:bg-accent/15 dark:text-accent"
                   : "bg-chip text-muted hover:text-foreground"
               }`}
             >
