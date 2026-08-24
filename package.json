@@ -1,0 +1,36 @@
+{
+  "name": "gridwatch",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n web,ingest -c cyan,magenta \"next dev --port 3000\" \"tsx watch server/index.ts\"",
+    "dev:web": "next dev --port 3000",
+    "dev:ingest": "tsx watch server/index.ts",
+    "build": "next build",
+    "start": "next start",
+    "start:ingest": "tsx server/index.ts",
+    "lint": "eslint",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "dependencies": {
+    "concurrently": "^10.0.5",
+    "mqtt": "^5.15.2",
+    "next": "16.3.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.2",
+    "puppeteer-core": "^25.8.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  }
+}
