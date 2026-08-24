@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const links = [
   { href: "/", label: "Live timing" },
@@ -8,31 +12,37 @@ const links = [
   { href: "/predict", label: "Predict" },
 ];
 
-export function SiteHeader({ current }: { current: string }) {
+export function SiteHeader() {
+  const pathname = usePathname() ?? "/";
+
   return (
-    <header className="border-b border-white/8 bg-[#0c0d12]/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-3">
-        <Link href="/" className="flex items-baseline gap-2">
-          <span className="font-display text-2xl tracking-tight text-amber-400">
-            GRIDWATCH
+    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
+      <div className="h-px bg-gradient-to-r from-transparent via-accent to-transparent" />
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+        <Link href="/" className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent font-display text-[13px] font-bold tracking-wide text-accent-fg">
+            GW
           </span>
-          <span className="hidden text-[11px] uppercase tracking-[0.18em] text-zinc-500 sm:inline">
-            Unofficial fan timing
+          <span className="min-w-0">
+            <span className="block font-display text-xl leading-none tracking-tight text-foreground sm:text-2xl">
+              GRIDWATCH
+            </span>
+            <span className="mt-0.5 hidden text-[10px] uppercase tracking-[0.18em] text-subtle sm:block">
+              Unofficial fan timing
+            </span>
           </span>
         </Link>
-        <nav className="flex items-center gap-1 text-sm">
+        <nav className="order-last flex w-full min-w-0 items-center gap-1 overflow-x-auto text-sm sm:order-none sm:ml-auto sm:w-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {links.map((link) => {
             const active =
-              current === link.href ||
-              (link.href !== "/" && current.startsWith(link.href));
+              pathname === link.href ||
+              (link.href !== "/" && pathname.startsWith(link.href));
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-full px-3 py-1.5 transition ${
-                  active
-                    ? "bg-amber-400/15 text-amber-300"
-                    : "text-zinc-400 hover:text-zinc-100"
+                className={`shrink-0 rounded-full px-3 py-1.5 transition ${
+                  active ? "nav-active" : "text-muted hover:bg-chip hover:text-foreground"
                 }`}
               >
                 {link.label}
@@ -40,24 +50,10 @@ export function SiteHeader({ current }: { current: string }) {
             );
           })}
         </nav>
+        <div className="ml-auto sm:ml-0">
+          <ThemeToggle />
+        </div>
       </div>
     </header>
-  );
-}
-
-export function SiteFooter() {
-  return (
-    <footer className="mt-auto border-t border-white/8 px-4 py-6 text-center text-xs leading-5 text-zinc-500">
-      Gridwatch is an unofficial fan project. Not affiliated with Formula One
-      Group, the FIA, or any team. Live data via{" "}
-      <a className="text-zinc-300 underline-offset-2 hover:underline" href="https://openf1.org">
-        OpenF1
-      </a>
-      . Official standings via{" "}
-      <a className="text-zinc-300 underline-offset-2 hover:underline" href="https://github.com/jolpica/jolpica-f1">
-        Jolpica
-      </a>
-      .
-    </footer>
   );
 }

@@ -2,9 +2,15 @@
 
 Unofficial timing board I put together for race weekends. Positions, gaps, tyres, the championship after the last round, and a simple podium pick with friends.
 
+Live at [gridwatch.ayushd70.dev](https://gridwatch.ayushd70.dev). The portfolio on [ayushd70.dev](https://ayushd70.dev) is a different site.
+
 This is a fan project. Not F1, not the FIA, not a team. No official logos on purpose.
 
+There's a light/dark toggle in the header. It remembers what you picked; if you haven't, it follows the OS.
+
 ![Live timing](docs/screenshots/timing.png)
+
+![Live timing in light mode](docs/screenshots/timing-light.png)
 
 ## Pages
 
@@ -62,25 +68,19 @@ src/app/    Next.js pages
 shared/     timing snapshot shape used by both
 ```
 
-`npm run screenshots` grabs the images above (Chrome has to be installed, and `npm run dev` already running).
+`npm run screenshots` grabs the images above (Chrome has to be installed, and `npm run dev` already running). It shoots dark mode for the page gallery and a light timing shot so both themes are in the README.
 
 ## Deploy
 
-The site is meant to live at [gridwatch.ayushd70.dev](https://gridwatch.ayushd70.dev) on Vercel. The portfolio on [ayushd70.dev](https://ayushd70.dev) stays on GitHub Pages; this is just a subdomain.
+Production is Vercel at [gridwatch.ayushd70.dev](https://gridwatch.ayushd70.dev). Leave `NEXT_PUBLIC_INGEST_WS` unset there — Vercel can't run the MQTT ingest, so the timing page polls OpenF1 REST through `/api/timing`. For true live MQTT you'd still run `server/` somewhere like Fly or Railway.
 
-Vercel can't run the long-lived MQTT ingest process. On production the timing page polls OpenF1 REST through `/api/timing` instead. That's plenty for last-session replay. For true live MQTT you'd still run `server/` somewhere like Fly or Railway and set `INGEST_URL` / `NEXT_PUBLIC_INGEST_WS`.
-
-DNS in Google Domains / Squarespace (the nameservers for ayushd70.dev):
+The DNS record (Squarespace / Google Domains, not the Vercel nameserver preset, and not the apex):
 
 | Host | Type | Value |
 | --- | --- | --- |
 | `gridwatch` | CNAME | `cname.vercel-dns.com` |
 
-Don't touch the apex records — those are the portfolio.
-
-Then in the Vercel project: Settings → Domains → add `gridwatch.ayushd70.dev`.
-
-See [docs/deploy.md](docs/deploy.md) if you need the click-by-click version.
+Click-by-click, including Squarespace, is in [docs/deploy.md](docs/deploy.md).
 
 ## License
 

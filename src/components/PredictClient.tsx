@@ -107,42 +107,48 @@ export function PredictClient({ initial }: { initial: Payload }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-      <section className="rounded-2xl border border-white/8 bg-[#12141b] p-5">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+      <section className="panel p-5 sm:p-6">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">
           {data.race.Circuit.Location.country}
         </p>
-        <h1 className="font-display text-3xl text-zinc-50">{data.race.raceName}</h1>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h2 className="mt-1 font-display text-3xl tracking-tight text-foreground">
+          {data.race.raceName}
+        </h2>
+        <p className="mt-1 text-sm text-muted">
           {data.race.Circuit.circuitName} · {data.race.date}
           {data.locked ? " · picks locked" : " · picks open until lights out"}
         </p>
 
-        <div className="mt-5 rounded-xl border border-white/8 bg-black/20 p-4">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+        <div className="mt-5 rounded-xl border border-border bg-surface-2 p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-subtle">
             Form guide
           </p>
-          <p className="mt-1 text-xs text-zinc-500">
-            Weighted from current standings and {data.lastRace.name}. Not official odds.
+          <p className="mt-1 text-xs text-subtle">
+            Weighted from current standings and {data.lastRace.name}. Not official
+            odds.
           </p>
           <ol className="mt-3 space-y-2">
             {data.formGuide.map((pick, index) => (
-              <li key={pick.driverId} className="flex items-center justify-between text-sm">
-                <span className="text-zinc-300">
+              <li
+                key={pick.driverId}
+                className="flex items-center justify-between text-sm"
+              >
+                <span className="text-foreground">
                   P{index + 1} · {pick.code} {pick.name}
                 </span>
-                <span className="font-mono text-zinc-500">{pick.score}</span>
+                <span className="font-mono text-subtle">{pick.score}</span>
               </li>
             ))}
           </ol>
         </div>
 
         <form onSubmit={submit} className="mt-6 space-y-3">
-          <label className="block text-sm text-zinc-400">
+          <label className="block text-sm text-muted">
             Your name
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-zinc-100"
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
               disabled={data.locked}
               required
             />
@@ -155,12 +161,12 @@ export function PredictClient({ initial }: { initial: Payload }) {
                 { slot: "P3", value: p3, setter: setP3 },
               ] as const
             ).map((field) => (
-              <label key={field.slot} className="block text-sm text-zinc-400">
+              <label key={field.slot} className="block text-sm text-muted">
                 {field.slot}
                 <select
                   value={field.value}
                   onChange={(event) => field.setter(event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-zinc-100"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
                   disabled={data.locked}
                 >
                   <option value="">Select</option>
@@ -173,35 +179,36 @@ export function PredictClient({ initial }: { initial: Payload }) {
               </label>
             ))}
           </div>
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
           <button
             type="submit"
             disabled={data.locked || pending}
-            className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-50"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:opacity-90 disabled:opacity-50"
           >
             {data.locked ? "Locked" : pending ? "Saving…" : "Lock in podium"}
           </button>
         </form>
       </section>
 
-      <section className="rounded-2xl border border-white/8 bg-[#12141b] p-5">
-        <h2 className="font-display text-2xl text-zinc-50">Picks</h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Scoring: 5 / 3 / 1 for exact P1–P3, plus 1 if the driver finishes on the podium in another slot.
+      <section className="panel p-5 sm:p-6">
+        <h2 className="font-display text-2xl text-foreground">Picks</h2>
+        <p className="mt-1 text-xs text-subtle">
+          Scoring: 5 / 3 / 1 for exact P1–P3, plus 1 if the driver finishes on the
+          podium in another slot.
         </p>
         <ul className="mt-4 space-y-3">
           {rows.length === 0 ? (
-            <li className="text-sm text-zinc-500">No picks yet for this race.</li>
+            <li className="text-sm text-muted">No picks yet for this race.</li>
           ) : (
             rows.map((pick) => (
-              <li key={pick.id} className="rounded-xl bg-black/25 px-3 py-3">
+              <li key={pick.id} className="rounded-xl bg-surface-2 px-3 py-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-zinc-100">{pick.name}</span>
+                  <span className="text-sm text-foreground">{pick.name}</span>
                   {pick.points != null ? (
-                    <span className="font-mono text-amber-300">{pick.points} pts</span>
+                    <span className="font-mono text-accent">{pick.points} pts</span>
                   ) : null}
                 </div>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-subtle">
                   {label(pick.p1)} · {label(pick.p2)} · {label(pick.p3)}
                 </p>
               </li>
@@ -210,17 +217,17 @@ export function PredictClient({ initial }: { initial: Payload }) {
         </ul>
         {data.lastScored.length > 0 && data.lastRace.round !== undefined ? (
           <div className="mt-8">
-            <h3 className="font-display text-xl text-zinc-50">
+            <h3 className="font-display text-xl text-foreground">
               {data.lastRace.name} scores
             </h3>
             <ul className="mt-3 space-y-3">
               {data.lastScored.map((pick) => (
-                <li key={pick.id} className="rounded-xl bg-black/25 px-3 py-3">
+                <li key={pick.id} className="rounded-xl bg-surface-2 px-3 py-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-zinc-100">{pick.name}</span>
-                    <span className="font-mono text-amber-300">{pick.points} pts</span>
+                    <span className="text-sm text-foreground">{pick.name}</span>
+                    <span className="font-mono text-accent">{pick.points} pts</span>
                   </div>
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-xs text-subtle">
                     {label(pick.p1)} · {label(pick.p2)} · {label(pick.p3)}
                   </p>
                 </li>

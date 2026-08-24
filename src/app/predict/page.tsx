@@ -1,5 +1,5 @@
 import { PredictClient } from "@/components/PredictClient";
-import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
+import { PageHeading } from "@/components/SiteChrome";
 import {
   currentTime,
   fetchCalendar,
@@ -22,13 +22,7 @@ export default async function PredictPage() {
   const target = nextUpcomingRace(calendar.races);
   if (!target) {
     return (
-      <div className="flex min-h-full flex-col">
-        <SiteHeader current="/predict" />
-        <main className="mx-auto max-w-6xl px-4 py-10 text-zinc-400">
-          No upcoming race found in the current calendar.
-        </main>
-        <SiteFooter />
-      </div>
+      <p className="text-muted">No upcoming race found in the current calendar.</p>
     );
   }
 
@@ -37,29 +31,32 @@ export default async function PredictPage() {
   const scored = last.round === target.round ? scorePicks(picks, last.results) : null;
 
   return (
-    <div className="flex min-h-full flex-col">
-      <SiteHeader current="/predict" />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <PredictClient
-          initial={{
-            race: target,
-            raceKey: `${target.season}-${target.round}`,
-            locked: raceDate(target).getTime() <= currentTime(),
-            drivers: standings.standings.map((row) => ({
-              driverId: row.Driver.driverId,
-              code: row.Driver.code,
-              name: `${row.Driver.givenName} ${row.Driver.familyName}`,
-              team: row.Constructors[0]?.name ?? "",
-            })),
-            picks,
-            scored,
-            lastScored: scorePicks(lastPicks, last.results),
-            formGuide: formGuide(standings.standings, last.results),
-            lastRace: { name: last.raceName, round: last.round, season: last.season },
-          }}
-        />
-      </main>
-      <SiteFooter />
-    </div>
+    <>
+      <PageHeading
+        kicker="Podium picks"
+        title="Lock in a podium before lights out"
+      >
+        5 / 3 / 1 for exact P1–P3, plus a consolation point if you had them on the
+        podium in the wrong slot.
+      </PageHeading>
+      <PredictClient
+        initial={{
+          race: target,
+          raceKey: `${target.season}-${target.round}`,
+          locked: raceDate(target).getTime() <= currentTime(),
+          drivers: standings.standings.map((row) => ({
+            driverId: row.Driver.driverId,
+            code: row.Driver.code,
+            name: `${row.Driver.givenName} ${row.Driver.familyName}`,
+            team: row.Constructors[0]?.name ?? "",
+          })),
+          picks,
+          scored,
+          lastScored: scorePicks(lastPicks, last.results),
+          formGuide: formGuide(standings.standings, last.results),
+          lastRace: { name: last.raceName, round: last.round, season: last.season },
+        }}
+      />
+    </>
   );
 }

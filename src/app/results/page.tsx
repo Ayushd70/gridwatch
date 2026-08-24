@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
+import { PageHeading } from "@/components/SiteChrome";
 import { formatWhen } from "@/lib/format";
 import {
   constructorColor,
@@ -32,48 +32,38 @@ export default async function ResultsPage({
   ]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <SiteHeader current="/results" />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-          Official results · Jolpica
-        </p>
-        <h1 className="font-display text-4xl text-zinc-50">
-          {race?.raceName ?? "Results"}
-        </h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          {race
-            ? `${race.circuit.circuitName} · ${formatWhen(`${race.date}T12:00:00Z`)}`
-            : "Results are not published for this round yet."}
-        </p>
+    <>
+      <PageHeading kicker="Official results · Jolpica" title={race?.raceName ?? "Results"}>
+        {race
+          ? `${race.circuit.circuitName} · ${formatWhen(`${race.date}T12:00:00Z`)}`
+          : "Results are not published for this round yet."}
+      </PageHeading>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {calendar.races.map((item) => {
-            const done = raceDate(item).getTime() + 4 * 60 * 60 * 1000 < currentTime();
-            if (!done && item.round !== last.round) return null;
-            const active = item.round === round;
-            return (
-              <Link
-                key={item.round}
-                href={`/results?round=${item.round}`}
-                className={`rounded-full px-3 py-1 text-xs ${
-                  active
-                    ? "bg-amber-400/15 text-amber-300"
-                    : "bg-white/5 text-zinc-400 hover:text-zinc-100"
-                }`}
-              >
-                R{item.round} {item.Circuit.Location.country}
-              </Link>
-            );
-          })}
-        </div>
+      <div className="mb-2 flex flex-wrap gap-2">
+        {calendar.races.map((item) => {
+          const done = raceDate(item).getTime() + 4 * 60 * 60 * 1000 < currentTime();
+          if (!done && item.round !== last.round) return null;
+          const active = item.round === round;
+          return (
+            <Link
+              key={item.round}
+              href={`/results?round=${item.round}`}
+              className={`rounded-full px-3 py-1 text-xs transition ${
+                active
+                  ? "bg-accent/15 font-medium text-accent"
+                  : "bg-chip text-muted hover:text-foreground"
+              }`}
+            >
+              R{item.round} {item.Circuit.Location.country}
+            </Link>
+          );
+        })}
+      </div>
 
-        {race ? <ResultTable title="Race" rows={race.results} kind="race" /> : null}
-        {sprint.length > 0 ? <ResultTable title="Sprint" rows={sprint} kind="sprint" /> : null}
-        {qualifying.length > 0 ? <QualiTable rows={qualifying} /> : null}
-      </main>
-      <SiteFooter />
-    </div>
+      {race ? <ResultTable title="Race" rows={race.results} kind="race" /> : null}
+      {sprint.length > 0 ? <ResultTable title="Sprint" rows={sprint} kind="sprint" /> : null}
+      {qualifying.length > 0 ? <QualiTable rows={qualifying} /> : null}
+    </>
   );
 }
 
@@ -87,15 +77,19 @@ function ResultTable({
   kind: "race" | "sprint";
 }) {
   return (
-    <section className="mt-6 overflow-hidden rounded-2xl border border-white/8 bg-[#12141b]">
-      <h2 className="border-b border-white/8 px-4 py-3 font-display text-xl">{title}</h2>
+    <section className="panel mt-6">
+      <h2 className="border-b border-border px-4 py-3 font-display text-xl text-foreground">
+        {title}
+      </h2>
       <table className="w-full text-sm">
-        <thead className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">
+        <thead className="text-[11px] uppercase tracking-[0.14em] text-subtle">
           <tr>
             <th className="px-4 py-2 text-left font-medium">P</th>
             <th className="px-4 py-2 text-left font-medium">Driver</th>
             {kind === "race" ? (
-              <th className="hidden px-4 py-2 text-right font-medium sm:table-cell">Grid</th>
+              <th className="hidden px-4 py-2 text-right font-medium sm:table-cell">
+                Grid
+              </th>
             ) : null}
             <th className="px-4 py-2 text-right font-medium">Time / status</th>
             <th className="px-4 py-2 text-right font-medium">Pts</th>
@@ -103,27 +97,42 @@ function ResultTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={`${row.Driver.driverId}-${row.position}`} className="border-t border-white/5">
-              <td className="px-4 py-2 font-mono text-zinc-400">{row.positionText ?? row.position}</td>
-              <td className="px-4 py-2">
+            <tr
+              key={`${row.Driver.driverId}-${row.position}`}
+              className="border-t border-border"
+            >
+              <td className="px-4 py-2.5 font-mono text-muted">
+                {row.positionText ?? row.position}
+              </td>
+              <td className="px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <span
                     className="h-4 w-1.5 rounded-full"
-                    style={{ background: teamSwatch(constructorColor(row.Constructor.constructorId)) }}
+                    style={{
+                      background: teamSwatch(
+                        constructorColor(row.Constructor.constructorId),
+                      ),
+                    }}
                   />
-                  {row.Driver.givenName} {row.Driver.familyName}
+                  <span className="text-foreground">
+                    {row.Driver.givenName} {row.Driver.familyName}
+                  </span>
                 </div>
-                <div className="pl-3.5 text-xs text-zinc-500">{row.Constructor.name}</div>
+                <div className="pl-3.5 text-xs text-subtle">
+                  {row.Constructor.name}
+                </div>
               </td>
               {kind === "race" ? (
-                <td className="hidden px-4 py-2 text-right font-mono text-zinc-500 sm:table-cell">
+                <td className="hidden px-4 py-2.5 text-right font-mono text-subtle sm:table-cell">
                   {row.grid ?? "—"}
                 </td>
               ) : null}
-              <td className="px-4 py-2 text-right font-mono text-zinc-300">
+              <td className="px-4 py-2.5 text-right font-mono text-muted">
                 {row.Time?.time ?? row.status}
               </td>
-              <td className="px-4 py-2 text-right font-mono">{row.points}</td>
+              <td className="px-4 py-2.5 text-right font-mono text-foreground">
+                {row.points}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -134,10 +143,12 @@ function ResultTable({
 
 function QualiTable({ rows }: { rows: QualifyingResult[] }) {
   return (
-    <section className="mt-6 overflow-hidden rounded-2xl border border-white/8 bg-[#12141b]">
-      <h2 className="border-b border-white/8 px-4 py-3 font-display text-xl">Qualifying</h2>
+    <section className="panel mt-6">
+      <h2 className="border-b border-border px-4 py-3 font-display text-xl text-foreground">
+        Qualifying
+      </h2>
       <table className="w-full text-sm">
-        <thead className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">
+        <thead className="text-[11px] uppercase tracking-[0.14em] text-subtle">
           <tr>
             <th className="px-4 py-2 text-left font-medium">P</th>
             <th className="px-4 py-2 text-left font-medium">Driver</th>
@@ -148,20 +159,32 @@ function QualiTable({ rows }: { rows: QualifyingResult[] }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.Driver.driverId} className="border-t border-white/5">
-              <td className="px-4 py-2 font-mono text-zinc-400">{row.position}</td>
-              <td className="px-4 py-2">
+            <tr key={row.Driver.driverId} className="border-t border-border">
+              <td className="px-4 py-2.5 font-mono text-muted">{row.position}</td>
+              <td className="px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <span
                     className="h-4 w-1.5 rounded-full"
-                    style={{ background: teamSwatch(constructorColor(row.Constructor.constructorId)) }}
+                    style={{
+                      background: teamSwatch(
+                        constructorColor(row.Constructor.constructorId),
+                      ),
+                    }}
                   />
-                  {row.Driver.givenName} {row.Driver.familyName}
+                  <span className="text-foreground">
+                    {row.Driver.givenName} {row.Driver.familyName}
+                  </span>
                 </div>
               </td>
-              <td className="px-4 py-2 text-right font-mono text-zinc-300">{row.Q1 ?? "—"}</td>
-              <td className="px-4 py-2 text-right font-mono text-zinc-300">{row.Q2 ?? "—"}</td>
-              <td className="px-4 py-2 text-right font-mono text-zinc-100">{row.Q3 ?? "—"}</td>
+              <td className="px-4 py-2.5 text-right font-mono text-muted">
+                {row.Q1 ?? "—"}
+              </td>
+              <td className="px-4 py-2.5 text-right font-mono text-muted">
+                {row.Q2 ?? "—"}
+              </td>
+              <td className="px-4 py-2.5 text-right font-mono text-foreground">
+                {row.Q3 ?? "—"}
+              </td>
             </tr>
           ))}
         </tbody>

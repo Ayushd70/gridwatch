@@ -78,24 +78,26 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
 
   const modeLabel = useMemo(() => {
     if (snapshot.mode === "live") return "LIVE";
-    if (snapshot.mode === "replay") return snapshot.source === "fixture" ? "SAMPLE" : "REPLAY";
+    if (snapshot.mode === "replay")
+      return snapshot.source === "fixture" ? "SAMPLE" : "REPLAY";
     return "IDLE";
   }, [snapshot.mode, snapshot.source]);
 
   const weather = snapshot.weather;
+  const live = snapshot.mode === "live";
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-2xl border border-white/8 bg-[#12141b] p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">
+    <div className="space-y-5">
+      <section className="panel p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-subtle">
               {snapshot.meeting?.country || "Session"}
             </p>
-            <h1 className="font-display text-3xl tracking-tight text-zinc-50 sm:text-4xl">
+            <h1 className="mt-1 font-display text-4xl tracking-tight text-foreground sm:text-5xl">
               {snapshot.meeting?.name ?? "Waiting for a session"}
             </h1>
-            <p className="mt-1 text-sm text-zinc-400">
+            <p className="mt-2 text-sm text-muted">
               {snapshot.session?.name ?? "No OpenF1 session loaded"}
               {snapshot.lap
                 ? ` · Lap ${snapshot.lap.current}${snapshot.lap.total ? ` / ${snapshot.lap.total}` : ""}`
@@ -103,35 +105,44 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
               {snapshot.lastFlag ? ` · ${snapshot.lastFlag}` : ""}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide ${
-                snapshot.mode === "live"
-                  ? "bg-emerald-500/15 text-emerald-300"
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide ${
+                live
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                   : snapshot.mode === "replay"
-                    ? "bg-sky-500/15 text-sky-300"
-                    : "bg-zinc-700/50 text-zinc-300"
+                    ? "bg-sky-500/15 text-sky-800 dark:text-sky-300"
+                    : "bg-chip text-muted"
               }`}
             >
+              {live ? <span className="live-dot" /> : null}
               {modeLabel}
             </span>
-            <span className="rounded-full bg-white/5 px-2.5 py-1 text-[11px] text-zinc-400">
+            <span className="chip text-[11px]">
               {connected ? "socket" : WS_URL ? "http" : "poll"} · {snapshot.source}
               {snapshot.authenticated ? " · auth" : ""}
             </span>
           </div>
         </div>
         {weather ? (
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-300">
-            <Chip label={`Air ${fmtTemp(weather.airTemp)}`} />
-            <Chip label={`Track ${fmtTemp(weather.trackTemp)}`} />
-            <Chip label={weather.rainfall && weather.rainfall > 0 ? `Rain ${weather.rainfall}` : "Dry"} />
-            {weather.windSpeed != null ? <Chip label={`Wind ${weather.windSpeed.toFixed(1)} m/s`} /> : null}
-            {weather.humidity != null ? <Chip label={`RH ${Math.round(weather.humidity)}%`} /> : null}
+          <div className="mt-4 flex flex-wrap gap-2 text-xs">
+            <span className="chip">Air {fmtTemp(weather.airTemp)}</span>
+            <span className="chip">Track {fmtTemp(weather.trackTemp)}</span>
+            <span className="chip">
+              {weather.rainfall && weather.rainfall > 0
+                ? `Rain ${weather.rainfall}`
+                : "Dry"}
+            </span>
+            {weather.windSpeed != null ? (
+              <span className="chip">Wind {weather.windSpeed.toFixed(1)} m/s</span>
+            ) : null}
+            {weather.humidity != null ? (
+              <span className="chip">RH {Math.round(weather.humidity)}%</span>
+            ) : null}
           </div>
         ) : null}
         {snapshot.notice ? (
-          <p className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2 text-sm text-amber-100/90">
+          <p className="mt-4 rounded-xl border border-accent/25 bg-accent/10 px-3 py-2 text-sm text-foreground">
             {snapshot.notice}
           </p>
         ) : null}
@@ -165,77 +176,107 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
         />
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-white/8 bg-[#12141b]">
-        <table className="w-full border-collapse text-sm">
-          <thead className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">
-            <tr className="border-b border-white/8">
-              <th className="px-3 py-2 text-left font-medium">P</th>
-              <th className="px-3 py-2 text-left font-medium">Driver</th>
-              <th className="hidden px-3 py-2 text-left font-medium md:table-cell">Team</th>
-              <th className="px-3 py-2 text-right font-medium">Lap</th>
-              <th className="hidden px-3 py-2 text-right font-medium xl:table-cell">S1</th>
-              <th className="hidden px-3 py-2 text-right font-medium xl:table-cell">S2</th>
-              <th className="hidden px-3 py-2 text-right font-medium xl:table-cell">S3</th>
-              <th className="px-3 py-2 text-right font-medium">Last</th>
-              <th className="px-3 py-2 text-right font-medium">Gap</th>
-              <th className="hidden px-3 py-2 text-right font-medium sm:table-cell">Int</th>
-              <th className="hidden px-3 py-2 text-right font-medium lg:table-cell">Pits</th>
-              <th className="px-3 py-2 text-center font-medium">Tyre</th>
+      <section className="panel overflow-x-auto">
+        <table className="w-full min-w-[640px] border-collapse text-sm">
+          <thead className="text-[11px] uppercase tracking-[0.14em] text-subtle">
+            <tr className="border-b border-border">
+              <th className="px-3 py-3 text-left font-medium">P</th>
+              <th className="px-3 py-3 text-left font-medium">Driver</th>
+              <th className="hidden px-3 py-3 text-left font-medium md:table-cell">
+                Team
+              </th>
+              <th className="px-3 py-3 text-right font-medium">Lap</th>
+              <th className="hidden px-3 py-3 text-right font-medium xl:table-cell">
+                S1
+              </th>
+              <th className="hidden px-3 py-3 text-right font-medium xl:table-cell">
+                S2
+              </th>
+              <th className="hidden px-3 py-3 text-right font-medium xl:table-cell">
+                S3
+              </th>
+              <th className="px-3 py-3 text-right font-medium">Last</th>
+              <th className="px-3 py-3 text-right font-medium">Gap</th>
+              <th className="hidden px-3 py-3 text-right font-medium sm:table-cell">
+                Int
+              </th>
+              <th className="hidden px-3 py-3 text-right font-medium lg:table-cell">
+                Pits
+              </th>
+              <th className="px-3 py-3 text-center font-medium">Tyre</th>
             </tr>
           </thead>
           <tbody>
             {snapshot.rows.length === 0 ? (
               <tr>
-                <td colSpan={12} className="px-3 py-10 text-center text-zinc-500">
-                  No timing rows yet. When a session is open, positions appear here.
+                <td colSpan={12} className="px-3 py-12 text-center text-muted">
+                  No timing rows yet. When a session is open, positions appear
+                  here.
                 </td>
               </tr>
             ) : (
               snapshot.rows.map((row) => (
-                <tr key={row.driverNumber} className="border-b border-white/5 last:border-0">
-                  <td className="px-3 py-2 font-mono text-zinc-300">{row.position}</td>
-                  <td className="px-3 py-2">
+                <tr
+                  key={row.driverNumber}
+                  className="border-b border-border last:border-0"
+                  style={{
+                    background:
+                      row.position === 1 ? "var(--leader)" : undefined,
+                  }}
+                >
+                  <td className="px-3 py-2.5">
+                    <PositionMark n={row.position} />
+                  </td>
+                  <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <span
-                        className="h-4 w-1.5 rounded-full"
+                        className="h-5 w-1.5 rounded-full"
                         style={{ background: teamSwatch(row.teamColor) }}
                       />
-                      <span className="font-mono text-zinc-100">{row.acronym}</span>
-                      <span className="hidden text-zinc-400 lg:inline">{row.name}</span>
+                      <span className="font-display text-lg tracking-wide text-foreground">
+                        {row.acronym}
+                      </span>
+                      <span className="hidden text-muted lg:inline">
+                        {row.name}
+                      </span>
                     </div>
                   </td>
-                  <td className="hidden px-3 py-2 text-zinc-400 md:table-cell">{row.teamName}</td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">
+                  <td className="hidden px-3 py-2.5 text-muted md:table-cell">
+                    {row.teamName}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono text-muted">
                     {row.lapNumber ?? "—"}
                   </td>
-                  <td className="hidden px-3 py-2 text-right font-mono text-zinc-500 xl:table-cell">
+                  <td className="hidden px-3 py-2.5 text-right font-mono text-subtle xl:table-cell">
                     {formatLapTime(row.sectors[0])}
                   </td>
-                  <td className="hidden px-3 py-2 text-right font-mono text-zinc-500 xl:table-cell">
+                  <td className="hidden px-3 py-2.5 text-right font-mono text-subtle xl:table-cell">
                     {formatLapTime(row.sectors[1])}
                   </td>
-                  <td className="hidden px-3 py-2 text-right font-mono text-zinc-500 xl:table-cell">
+                  <td className="hidden px-3 py-2.5 text-right font-mono text-subtle xl:table-cell">
                     {formatLapTime(row.sectors[2])}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-100">
+                  <td className="px-3 py-2.5 text-right font-mono text-foreground">
                     {formatLapTime(row.lastLap)}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">
+                  <td className="px-3 py-2.5 text-right font-mono text-foreground">
                     {row.position === 1 ? "LEADER" : formatGap(row.gapToLeader)}
                   </td>
-                  <td className="hidden px-3 py-2 text-right font-mono text-zinc-400 sm:table-cell">
+                  <td className="hidden px-3 py-2.5 text-right font-mono text-muted sm:table-cell">
                     {row.position === 1 ? "—" : formatGap(row.interval)}
                   </td>
-                  <td className="hidden px-3 py-2 text-right font-mono text-zinc-400 lg:table-cell">
+                  <td className="hidden px-3 py-2.5 text-right font-mono text-muted lg:table-cell">
                     {row.pitCount || "—"}
                     {row.lastPit != null ? (
-                      <span className="ml-1 text-[11px] text-zinc-600">
+                      <span className="ml-1 text-[11px] text-subtle">
                         {row.lastPit.toFixed(1)}s
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2 text-center">
-                    <span className={`tyre ${tyreClass(row.tyre)}`}>{tyreCode(row.tyre)}</span>
+                  <td className="px-3 py-2.5 text-center">
+                    <span className={`tyre ${tyreClass(row.tyre)}`}>
+                      {tyreCode(row.tyre)}
+                    </span>
                   </td>
                 </tr>
               ))
@@ -245,17 +286,22 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
       </section>
 
       {snapshot.raceControl.length > 0 ? (
-        <section className="rounded-2xl border border-white/8 bg-[#12141b] p-4">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+        <section className="panel p-5">
+          <p className="mb-3 text-[11px] uppercase tracking-[0.18em] text-subtle">
             Race control
           </p>
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-2.5 text-sm">
             {[...snapshot.raceControl].reverse().map((item, index) => (
-              <li key={`${item.date}-${index}`} className="flex gap-3 text-zinc-300">
-                <span className="w-20 shrink-0 font-mono text-[11px] text-zinc-500">
+              <li
+                key={`${item.date}-${index}`}
+                className="flex gap-3 text-foreground"
+              >
+                <span
+                  className={`w-24 shrink-0 font-mono text-[11px] font-semibold ${flagTone(item.flag || item.category)}`}
+                >
                   {item.flag || item.category || "MSG"}
                 </span>
-                <span>{item.message}</span>
+                <span className="text-muted">{item.message}</span>
               </li>
             ))}
           </ul>
@@ -265,10 +311,33 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
   );
 }
 
-function Chip({ label }: { label: string }) {
+function PositionMark({ n }: { n: number }) {
+  const tone =
+    n === 1
+      ? "bg-amber-400 text-zinc-950"
+      : n === 2
+        ? "bg-zinc-300 text-zinc-950"
+        : n === 3
+          ? "bg-amber-800 text-amber-50"
+          : "bg-chip text-muted";
   return (
-    <span className="rounded-full bg-white/5 px-2.5 py-1 text-zinc-300">{label}</span>
+    <span
+      className={`inline-flex h-6 w-6 items-center justify-center rounded-md font-mono text-xs font-semibold ${tone}`}
+    >
+      {n}
+    </span>
   );
+}
+
+function flagTone(flag?: string | null) {
+  const value = (flag || "").toUpperCase();
+  if (value.includes("GREEN") || value.includes("CLEAR")) {
+    return "text-emerald-700 dark:text-emerald-400";
+  }
+  if (value.includes("YELLOW")) return "text-amber-700 dark:text-amber-400";
+  if (value.includes("RED")) return "text-red-700 dark:text-red-400";
+  if (value.includes("BLUE")) return "text-sky-700 dark:text-sky-400";
+  return "text-subtle";
 }
 
 function fmtTemp(value: number | null) {
@@ -290,23 +359,27 @@ function ChampionshipStrip({
   }[];
 }) {
   return (
-    <section className="overflow-x-auto rounded-2xl border border-white/8 bg-[#12141b] p-3">
-      <p className="mb-2 px-1 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+    <section className="panel overflow-x-auto p-4">
+      <p className="mb-3 px-1 text-[11px] uppercase tracking-[0.18em] text-subtle">
         {title}
       </p>
       <div className="flex min-w-max gap-2">
         {items.slice(0, 8).map((row) => (
           <div
             key={row.key}
-            className="w-36 rounded-xl bg-black/30 px-3 py-2"
+            className="w-40 rounded-xl bg-surface-2 px-3 py-2.5"
             style={{ boxShadow: `inset 3px 0 0 ${teamSwatch(row.color)}` }}
           >
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-xs text-zinc-500">{row.sub}</span>
-              <span className="truncate font-mono text-sm text-zinc-100">{row.label}</span>
+              <span className="text-xs text-subtle">{row.sub}</span>
+              <span className="truncate font-display text-base tracking-wide text-foreground">
+                {row.label}
+              </span>
             </div>
-            <div className="mt-1 font-mono text-lg text-zinc-50">{row.points}</div>
-            <div className="text-[11px] text-emerald-400">
+            <div className="mt-1 font-mono text-lg text-foreground">
+              {row.points}
+            </div>
+            <div className="text-[11px] text-emerald-700 dark:text-emerald-400">
               {row.delta > 0 ? `+${row.delta} this race` : "no change yet"}
             </div>
           </div>
