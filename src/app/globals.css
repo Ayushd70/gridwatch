@@ -97,17 +97,6 @@ body {
   color: var(--muted);
 }
 
-.nav-active {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
-  font-weight: 500;
-}
-
-[data-theme="light"] .nav-active {
-  background: #09090b;
-  color: #ffffff;
-}
-
 .tyre {
   display: inline-flex;
   height: 1.5rem;

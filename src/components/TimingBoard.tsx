@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   formatGap,
   formatLapTime,
@@ -427,16 +427,66 @@ function ChampionshipStrip({
     color: string;
   }[];
 }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [canBack, setCanBack] = useState(false);
+  const [canFwd, setCanFwd] = useState(false);
+
+  const update = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    setCanBack(el.scrollLeft > 4);
+    setCanFwd(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [update, items.length]);
+
+  const move = (dir: -1 | 1) => {
+    const el = scroller.current;
+    if (!el) return;
+    el.scrollBy({
+      left: dir * Math.round(el.clientWidth * 0.75),
+      behavior: "smooth",
+    });
+  };
+
   return (
-    <section className="panel overflow-x-auto p-4">
-      <p className="mb-3 px-1 text-[11px] uppercase tracking-[0.18em] text-subtle">
-        {title}
-      </p>
-      <div className="flex min-w-max gap-2">
-        {items.slice(0, 8).map((row) => (
+    <section className="panel p-4">
+      <div className="mb-3 flex items-center justify-between gap-3 px-1">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">
+          {title}
+        </p>
+        <div className="flex shrink-0 gap-1">
+          <ScrollArrow
+            dir="back"
+            disabled={!canBack}
+            onClick={() => move(-1)}
+          />
+          <ScrollArrow
+            dir="fwd"
+            disabled={!canFwd}
+            onClick={() => move(1)}
+          />
+        </div>
+      </div>
+      <div
+        ref={scroller}
+        className="flex gap-2 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {items.map((row) => (
           <div
             key={row.key}
-            className="w-40 rounded-xl border border-border bg-surface px-3 py-2.5"
+            className="w-40 shrink-0 rounded-xl border border-border bg-surface px-3 py-2.5"
             style={{ boxShadow: `inset 3px 0 0 ${teamSwatch(row.color)}` }}
           >
             <div className="flex items-baseline justify-between gap-2">
@@ -455,5 +505,33 @@ function ChampionshipStrip({
         ))}
       </div>
     </section>
+  );
+}
+
+function ScrollArrow({
+  dir,
+  disabled,
+  onClick,
+}: {
+  dir: "back" | "fwd";
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={dir === "back" ? "Scroll back" : "Scroll forward"}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface text-foreground transition hover:border-accent/40 hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+        {dir === "back" ? (
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 6.5 9 12l5.5 5.5" />
+        ) : (
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 6.5 15 12l-5.5 5.5" />
+        )}
+      </svg>
+    </button>
   );
 }
