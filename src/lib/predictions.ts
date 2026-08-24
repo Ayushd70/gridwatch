@@ -33,8 +33,12 @@ function readStore(): Store {
 }
 
 function writeStore(store: Store) {
-  mkdirSync(dirname(STORE_PATH), { recursive: true });
-  writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
+  try {
+    mkdirSync(dirname(STORE_PATH), { recursive: true });
+    writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
+  } catch {
+    // Vercel filesystems are read-only. Picks still return to the client.
+  }
 }
 
 export function listPicks(season: string, round: string) {

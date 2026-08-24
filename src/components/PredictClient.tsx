@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 type DriverOption = {
   driverId: string;
@@ -25,6 +25,7 @@ type Payload = {
     time?: string;
     Circuit: { circuitName: string; Location: { locality: string; country: string } };
   };
+  raceKey: string;
   locked: boolean;
   drivers: DriverOption[];
   picks: PickRow[];
@@ -42,6 +43,26 @@ export function PredictClient({ initial }: { initial: Payload }) {
   const [p3, setP3] = useState(initial.formGuide[2]?.driverId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`gridwatch-picks:${initial.raceKey}`);
+      if (!raw) return;
+      const local = JSON.parse(raw) as PickRow[];
+      if (!Array.isArray(local) || local.length === 0) return;
+      // localStorage is not available during SSR.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate browser-only picks
+      setData((current) => {
+        const seen = new Set(current.picks.map((pick) => pick.id));
+        const extra = local.filter((pick) => !seen.has(pick.id));
+        return extra.length
+          ? { ...current, picks: [...current.picks, ...extra] }
+          : current;
+      });
+    } catch {
+      /* ignore bad local data */
+    }
+  }, [initial.raceKey]);
 
   const label = useMemo(() => {
     const map = new Map(data.drivers.map((driver) => [driver.driverId, driver]));
@@ -67,6 +88,13 @@ export function PredictClient({ initial }: { initial: Payload }) {
         return;
       }
       setData((current) => ({ ...current, picks: [...current.picks, body] }));
+      try {
+        const key = `gridwatch-picks:${initial.raceKey}`;
+        const existing = JSON.parse(localStorage.getItem(key) ?? "[]") as PickRow[];
+        localStorage.setItem(key, JSON.stringify([...existing, body]));
+      } catch {
+        /* private mode, etc */
+      }
       setName("");
     } catch {
       setError("Network error.");

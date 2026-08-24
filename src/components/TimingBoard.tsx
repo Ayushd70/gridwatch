@@ -11,7 +11,7 @@ import {
 import type { TeamChampionshipRow, TimingSnapshot } from "../../shared/timing";
 import { emptySnapshot } from "../../shared/timing";
 
-const WS_URL = process.env.NEXT_PUBLIC_INGEST_WS ?? "ws://localhost:4001";
+const WS_URL = process.env.NEXT_PUBLIC_INGEST_WS ?? "";
 
 export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
   const [snapshot, setSnapshot] = useState<TimingSnapshot>(
@@ -59,11 +59,18 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
       socket.onerror = () => socket?.close();
     };
 
-    void loadHttp();
-    connect();
+    const poll = WS_URL
+      ? null
+      : setInterval(() => {
+          void loadHttp();
+        }, 15_000);
+
+    if (WS_URL) connect();
+    else void loadHttp();
 
     return () => {
       closed = true;
+      if (poll) clearInterval(poll);
       if (retry) clearTimeout(retry);
       socket?.close();
     };
@@ -109,7 +116,7 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
               {modeLabel}
             </span>
             <span className="rounded-full bg-white/5 px-2.5 py-1 text-[11px] text-zinc-400">
-              {connected ? "socket" : "http"} · {snapshot.source}
+              {connected ? "socket" : WS_URL ? "http" : "poll"} · {snapshot.source}
               {snapshot.authenticated ? " · auth" : ""}
             </span>
           </div>

@@ -64,6 +64,24 @@ shared/     timing snapshot shape used by both
 
 `npm run screenshots` grabs the images above (Chrome has to be installed, and `npm run dev` already running).
 
+## Deploy
+
+The site is meant to live at [gridwatch.ayushd70.dev](https://gridwatch.ayushd70.dev) on Vercel. The portfolio on [ayushd70.dev](https://ayushd70.dev) stays on GitHub Pages; this is just a subdomain.
+
+Vercel can't run the long-lived MQTT ingest process. On production the timing page polls OpenF1 REST through `/api/timing` instead. That's plenty for last-session replay. For true live MQTT you'd still run `server/` somewhere like Fly or Railway and set `INGEST_URL` / `NEXT_PUBLIC_INGEST_WS`.
+
+DNS in Google Domains / Squarespace (the nameservers for ayushd70.dev):
+
+| Host | Type | Value |
+| --- | --- | --- |
+| `gridwatch` | CNAME | `cname.vercel-dns.com` |
+
+Don't touch the apex records — those are the portfolio.
+
+Then in the Vercel project: Settings → Domains → add `gridwatch.ayushd70.dev`.
+
+See [docs/deploy.md](docs/deploy.md) if you need the click-by-click version.
+
 ## License
 
 Personal / educational use. Check OpenF1's terms before you do anything commercial with their feed.

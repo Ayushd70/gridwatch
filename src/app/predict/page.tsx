@@ -43,6 +43,7 @@ export default async function PredictPage() {
         <PredictClient
           initial={{
             race: target,
+            raceKey: `${target.season}-${target.round}`,
             locked: raceDate(target).getTime() <= currentTime(),
             drivers: standings.standings.map((row) => ({
               driverId: row.Driver.driverId,
