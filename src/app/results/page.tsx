@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LastYearStrip } from "@/components/LastYearStrip";
 import { PageHeading } from "@/components/SiteChrome";
-import { formatWhen } from "@/lib/format";
+import { formatWhen, teamSwatch } from "@/lib/format";
 import {
   constructorColor,
   currentTime,
   fetchCalendar,
   fetchLastResults,
+  fetchLastYearAtCircuit,
   fetchQualifying,
   fetchRaceResults,
   fetchSprint,
@@ -14,7 +16,6 @@ import {
   type QualifyingResult,
   type RaceResult,
 } from "@/lib/jolpica";
-import { teamSwatch } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +29,16 @@ export default async function ResultsPage({
   const query = await searchParams;
   const [calendar, last] = await Promise.all([fetchCalendar(), fetchLastResults()]);
   const round = typeof query.round === "string" ? query.round : last.round;
+  const calendarRace = calendar.races.find((item) => item.round === round);
   const [race, qualifying, sprint] = await Promise.all([
     fetchRaceResults(round),
     fetchQualifying(round),
     fetchSprint(round),
   ]);
+  const lastYear = await fetchLastYearAtCircuit(
+    calendarRace?.Circuit.circuitId ?? race?.circuit.circuitId,
+    calendar.season,
+  );
 
   return (
     <>
@@ -62,6 +68,10 @@ export default async function ResultsPage({
           );
         })}
       </div>
+
+      {lastYear ? (
+        <LastYearStrip data={lastYear} currentSeason={calendar.season} />
+      ) : null}
 
       {race ? <ResultTable title="Race" rows={race.results} kind="race" /> : null}
       {sprint.length > 0 ? <ResultTable title="Sprint" rows={sprint} kind="sprint" /> : null}

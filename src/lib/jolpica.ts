@@ -30,18 +30,30 @@ export type ConstructorStanding = {
   Constructor: JolpicaConstructor;
 };
 
+export type CircuitInfo = {
+  circuitId: string;
+  circuitName: string;
+  Location: { locality: string; country: string };
+};
+
+export type SessionTime = {
+  date: string;
+  time?: string;
+};
+
 export type Race = {
   season: string;
   round: string;
   raceName: string;
   date: string;
   time?: string;
-  Circuit: {
-    circuitName: string;
-    Location: { locality: string; country: string };
-  };
-  Qualifying?: { date: string; time?: string };
-  Sprint?: { date: string; time?: string };
+  Circuit: CircuitInfo;
+  FirstPractice?: SessionTime;
+  SecondPractice?: SessionTime;
+  ThirdPractice?: SessionTime;
+  SprintQualifying?: SessionTime;
+  Sprint?: SessionTime;
+  Qualifying?: SessionTime;
 };
 
 export type RaceResult = {
@@ -66,6 +78,16 @@ export type QualifyingResult = {
   Q3?: string;
 };
 
+export type LastYearAtCircuit = {
+  season: string;
+  round: string;
+  raceName: string;
+  date: string;
+  circuit: CircuitInfo;
+  podium: RaceResult[];
+  pole: QualifyingResult | null;
+};
+
 async function jolpicaOptional<T>(path: string): Promise<T | null> {
   const response = await fetch(`${JOLPICA}${path}`, {
     next: { revalidate: 120 },
@@ -76,6 +98,19 @@ async function jolpicaOptional<T>(path: string): Promise<T | null> {
     throw new Error(`Jolpica ${path} failed (${response.status})`);
   }
   return response.json() as Promise<T>;
+}
+
+async function jolpicaSoft<T>(path: string): Promise<T | null> {
+  try {
+    const response = await fetch(`${JOLPICA}${path}`, {
+      next: { revalidate: 300 },
+      headers: { accept: "application/json" },
+    });
+    if (!response.ok) return null;
+    return response.json() as Promise<T>;
+  } catch {
+    return null;
+  }
 }
 
 async function jolpica<T>(path: string): Promise<T> {
@@ -145,6 +180,7 @@ export async function fetchLastResults() {
           raceName: string;
           round: string;
           date: string;
+          Circuit?: CircuitInfo;
           Results: RaceResult[];
         }[];
       };
@@ -156,6 +192,7 @@ export async function fetchLastResults() {
     round: race?.round ?? data.MRData.RaceTable.round,
     raceName: race?.raceName ?? "Last race",
     date: race?.date ?? null,
+    circuit: race?.Circuit ?? null,
     results: race?.Results ?? [],
   };
 }
@@ -170,7 +207,7 @@ export async function fetchRaceResults(round: string) {
           raceName: string;
           round: string;
           date: string;
-          Circuit: { circuitName: string; Location: { locality: string; country: string } };
+          Circuit: CircuitInfo;
           Results: RaceResult[];
         }[];
       };
@@ -210,6 +247,72 @@ export async function fetchSprint(round: string) {
   return data?.MRData.RaceTable.Races[0]?.SprintResults ?? [];
 }
 
+export async function fetchLastYearAtCircuit(
+  circuitId: string | undefined | null,
+  currentSeason: string | number,
+): Promise<LastYearAtCircuit | null> {
+  if (!circuitId) return null;
+  const previous = Number(currentSeason) - 1;
+  if (!Number.isFinite(previous) || previous < 1950) return null;
+  const year = String(previous);
+
+  const resultsData = await jolpicaSoft<{
+    MRData: {
+      RaceTable: {
+        Races: {
+          season?: string;
+          round: string;
+          raceName: string;
+          date: string;
+          Circuit: CircuitInfo;
+          Results?: RaceResult[];
+        }[];
+      };
+    };
+  }>(`/${year}/circuits/${circuitId}/results/?limit=100`);
+
+  const race = resultsData?.MRData.RaceTable.Races[0];
+  const results = race?.Results ?? [];
+  if (!race || results.length === 0) return null;
+
+  const podium = results
+    .filter((row) => {
+      const position = Number(row.position);
+      return Number.isFinite(position) && position >= 1 && position <= 3;
+    })
+    .slice(0, 3);
+
+  const qualiData = await jolpicaSoft<{
+    MRData: {
+      RaceTable: {
+        Races: { QualifyingResults?: QualifyingResult[] }[];
+      };
+    };
+  }>(`/${year}/circuits/${circuitId}/qualifying/?limit=100`);
+
+  return {
+    season: race.season ?? year,
+    round: race.round,
+    raceName: race.raceName,
+    date: race.date,
+    circuit: race.Circuit,
+    podium,
+    pole: qualiData?.MRData.RaceTable.Races[0]?.QualifyingResults?.[0] ?? null,
+  };
+}
+
+export function championshipGaps(points: string[]) {
+  const nums = points.map((value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  });
+  const leader = nums[0] ?? 0;
+  return nums.map((pts, index) => ({
+    toLeader: leader - pts,
+    interval: index === 0 ? 0 : (nums[index - 1] ?? 0) - pts,
+  }));
+}
+
 export function nextUpcomingRace(races: Race[], now = new Date(currentTime())) {
   const sorted = [...races].sort(
     (a, b) => raceDate(a).getTime() - raceDate(b).getTime(),
@@ -219,6 +322,31 @@ export function nextUpcomingRace(races: Race[], now = new Date(currentTime())) {
 
 export function raceDate(race: Pick<Race, "date" | "time">) {
   return new Date(`${race.date}T${race.time ?? "00:00:00Z"}`);
+}
+
+export function sessionDate(slot: SessionTime) {
+  return new Date(`${slot.date}T${slot.time ?? "00:00:00Z"}`);
+}
+
+export type WeekendSession = {
+  label: string;
+  at: Date;
+};
+
+export function weekendSessions(race: Race): WeekendSession[] {
+  const items: WeekendSession[] = [];
+  const add = (label: string, slot?: SessionTime) => {
+    if (!slot?.date) return;
+    items.push({ label, at: sessionDate(slot) });
+  };
+  add("Practice 1", race.FirstPractice);
+  add("Sprint quali", race.SprintQualifying);
+  add("Practice 2", race.SecondPractice);
+  add("Sprint", race.Sprint);
+  add("Practice 3", race.ThirdPractice);
+  add("Qualifying", race.Qualifying);
+  add("Race", { date: race.date, time: race.time });
+  return items.sort((a, b) => a.at.getTime() - b.at.getTime());
 }
 
 export function currentTime() {

@@ -48,3 +48,33 @@ export function formatWhen(iso: string | null | undefined) {
     timeStyle: "short",
   }).format(date);
 }
+
+export function formatDay(isoOrDate: string | null | undefined) {
+  if (!isoOrDate) return "—";
+  const date = new Date(
+    isoOrDate.includes("T") ? isoOrDate : `${isoOrDate}T12:00:00Z`,
+  );
+  if (Number.isNaN(date.getTime())) return isoOrDate;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+}
+
+export function formatSessionWhen(iso: string | Date) {
+  const date = iso instanceof Date ? iso : new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function formatChampionshipGap(
+  gap: number,
+  kind: "leader" | "interval",
+) {
+  if (gap === 0) return kind === "leader" ? "LEADER" : "—";
+  const pretty = Number.isInteger(gap) ? String(gap) : gap.toFixed(1);
+  return `-${pretty}`;
+}
