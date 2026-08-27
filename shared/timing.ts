@@ -54,6 +54,12 @@ export type WeatherState = {
   windSpeed: number | null;
 };
 
+export type MeetingSession = {
+  key: number | string;
+  name: string;
+  type: string;
+};
+
 export type TimingSnapshot = {
   mode: TimingMode;
   source: TimingSource;
@@ -66,6 +72,7 @@ export type TimingSnapshot = {
     country: string;
     year: number;
   } | null;
+  meetingSessions: MeetingSession[];
   session: {
     key: number | string;
     name: string;
@@ -96,6 +103,7 @@ export function emptySnapshot(
     restricted: false,
     notice: null,
     meeting: null,
+    meetingSessions: [],
     session: null,
     lap: null,
     trackStatus: null,

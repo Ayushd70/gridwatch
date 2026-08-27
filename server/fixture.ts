@@ -15,6 +15,7 @@ export function sampleSnapshot(): TimingSnapshot {
       country: "Belgium",
       year: 2026,
     },
+    meetingSessions: [],
     session: {
       key: "fixture",
       name: "Race",

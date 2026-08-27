@@ -15,7 +15,11 @@ export default async function CalendarPage() {
 
   return (
     <>
-      <PageHeading kicker="Season calendar · Jolpica" title={`${season} race weekends`} />
+      <PageHeading kicker="Season calendar · Jolpica" title={`${season} race weekends`}>
+        <a href="/calendar.ics" className="font-medium text-accent hover:underline">
+          Add to calendar
+        </a>
+      </PageHeading>
       <ul className="panel divide-y divide-border">
         {races.map((race) => {
           const start = raceDate(race);

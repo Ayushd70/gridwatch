@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { scorePodiumSlots } from "@/lib/pick-score";
 
 type DriverOption = {
   driverId: string;
@@ -18,6 +19,8 @@ type PickRow = {
   points?: number;
 };
 
+type SeasonStore = { rounds: Record<string, Record<string, number>> };
+
 type Payload = {
   race: {
     raceName: string;
@@ -26,7 +29,10 @@ type Payload = {
     Circuit: { circuitName: string; Location: { locality: string; country: string } };
   };
   raceKey: string;
+  season: string;
   locked: boolean;
+  share: { p1: string; p2: string; p3: string };
+  lastPodium: [string, string, string] | null;
   drivers: DriverOption[];
   picks: PickRow[];
   scored: PickRow[] | null;
@@ -35,14 +41,51 @@ type Payload = {
   lastRace: { name: string; round: string; season?: string };
 };
 
+function loadSeason(season: string): SeasonStore {
+  try {
+    const raw = localStorage.getItem(`gridwatch-season:${season}`);
+    if (!raw) return { rounds: {} };
+    const parsed = JSON.parse(raw) as SeasonStore;
+    return parsed?.rounds ? parsed : { rounds: {} };
+  } catch {
+    return { rounds: {} };
+  }
+}
+
+function saveSeason(season: string, store: SeasonStore) {
+  localStorage.setItem(`gridwatch-season:${season}`, JSON.stringify(store));
+}
+
+function seasonTotals(store: SeasonStore) {
+  const totals = new Map<string, number>();
+  for (const round of Object.values(store.rounds)) {
+    for (const [name, points] of Object.entries(round)) {
+      totals.set(name, (totals.get(name) ?? 0) + points);
+    }
+  }
+  return [...totals.entries()]
+    .map(([name, points]) => ({ name, points }))
+    .sort((a, b) => b.points - a.points);
+}
+
 export function PredictClient({ initial }: { initial: Payload }) {
   const [data, setData] = useState(initial);
   const [name, setName] = useState("");
-  const [p1, setP1] = useState(initial.formGuide[0]?.driverId ?? "");
-  const [p2, setP2] = useState(initial.formGuide[1]?.driverId ?? "");
-  const [p3, setP3] = useState(initial.formGuide[2]?.driverId ?? "");
+  const [p1, setP1] = useState(
+    initial.share.p1 || initial.formGuide[0]?.driverId || "",
+  );
+  const [p2, setP2] = useState(
+    initial.share.p2 || initial.formGuide[1]?.driverId || "",
+  );
+  const [p3, setP3] = useState(
+    initial.share.p3 || initial.formGuide[2]?.driverId || "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [seasonRows, setSeasonRows] = useState<{ name: string; points: number }[]>(
+    [],
+  );
 
   useEffect(() => {
     try {
@@ -63,6 +106,41 @@ export function PredictClient({ initial }: { initial: Payload }) {
       /* ignore bad local data */
     }
   }, [initial.raceKey]);
+
+  useEffect(() => {
+    try {
+      const season = initial.season;
+      const store = loadSeason(season);
+      const lastRound = initial.lastRace.round;
+      const localLast = JSON.parse(
+        localStorage.getItem(
+          `gridwatch-picks:${initial.lastRace.season ?? season}-${lastRound}`,
+        ) ?? "[]",
+      ) as PickRow[];
+      const scoredLocal =
+        initial.lastPodium && Array.isArray(localLast)
+          ? localLast.map((pick) => ({
+              ...pick,
+              points: scorePodiumSlots(pick, initial.lastPodium as [string, string, string]),
+            }))
+          : [];
+      const merged = new Map<string, number>();
+      for (const pick of [...initial.lastScored, ...scoredLocal]) {
+        if (pick.points == null) continue;
+        merged.set(pick.name, Math.max(merged.get(pick.name) ?? 0, pick.points));
+      }
+      if (merged.size > 0 && lastRound) {
+        store.rounds[lastRound] = {
+          ...(store.rounds[lastRound] ?? {}),
+          ...Object.fromEntries(merged),
+        };
+        saveSeason(season, store);
+      }
+      setSeasonRows(seasonTotals(store));
+    } catch {
+      /* private mode */
+    }
+  }, [initial.lastPodium, initial.lastRace.round, initial.lastRace.season, initial.lastScored, initial.season]);
 
   const label = useMemo(() => {
     const map = new Map(data.drivers.map((driver) => [driver.driverId, driver]));
@@ -100,6 +178,24 @@ export function PredictClient({ initial }: { initial: Payload }) {
       setError("Network error.");
     } finally {
       setPending(false);
+    }
+  }
+
+  async function copyShareLink() {
+    if (!p1 || !p2 || !p3) {
+      setError("Pick a full podium before copying a link.");
+      return;
+    }
+    const url = new URL("/predict", window.location.origin);
+    url.searchParams.set("p1", p1);
+    url.searchParams.set("p2", p2);
+    url.searchParams.set("p3", p3);
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy the link.");
     }
   }
 
@@ -180,13 +276,22 @@ export function PredictClient({ initial }: { initial: Payload }) {
             ))}
           </div>
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={data.locked || pending}
-            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:opacity-90 disabled:opacity-50"
-          >
-            {data.locked ? "Locked" : pending ? "Saving…" : "Lock in podium"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={data.locked || pending}
+              className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:opacity-90 disabled:opacity-50"
+            >
+              {data.locked ? "Locked" : pending ? "Saving…" : "Lock in podium"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void copyShareLink()}
+              className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-accent/40"
+            >
+              {copied ? "Copied" : "Copy pick link"}
+            </button>
+          </div>
         </form>
       </section>
 
@@ -230,6 +335,27 @@ export function PredictClient({ initial }: { initial: Payload }) {
                   <p className="mt-1 text-xs text-subtle">
                     {label(pick.p1)} · {label(pick.p2)} · {label(pick.p3)}
                   </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {seasonRows.length > 0 ? (
+          <div className="mt-8">
+            <h3 className="font-display text-xl text-foreground">
+              {data.season} season
+            </h3>
+            <p className="mt-1 text-xs text-subtle">
+              Stored on this phone from scored rounds. Not a shared leaderboard.
+            </p>
+            <ul className="mt-3 space-y-3">
+              {seasonRows.map((row) => (
+                <li
+                  key={row.name}
+                  className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-3"
+                >
+                  <span className="text-sm text-foreground">{row.name}</span>
+                  <span className="font-mono text-accent">{row.points} pts</span>
                 </li>
               ))}
             </ul>

@@ -4,6 +4,7 @@ import {
   type RaceControlItem,
   type TeamChampionshipRow,
   type TimingRow,
+  type MeetingSession,
   type TimingSnapshot,
   type TimingSource,
   type WeatherState,
@@ -94,6 +95,7 @@ export class TimingStore {
   private weather: WeatherState | null = null;
   private session: OpenF1Session | null = null;
   private meeting: OpenF1Meeting | null = null;
+  private meetingSessions: MeetingSession[] = [];
   private listeners = new Set<(snapshot: TimingSnapshot) => void>();
   private emitTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -123,6 +125,19 @@ export class TimingStore {
 
   applyMeeting(meeting: OpenF1Meeting, source: TimingSource) {
     this.meeting = meeting;
+    this.rebuild(source);
+  }
+
+  applyMeetingSessions(sessions: OpenF1Session[], source: TimingSource) {
+    this.meetingSessions = [...sessions]
+      .sort(
+        (a, b) => Date.parse(a.date_start) - Date.parse(b.date_start),
+      )
+      .map((item) => ({
+        key: item.session_key,
+        name: item.session_name,
+        type: item.session_type,
+      }));
     this.rebuild(source);
   }
 
@@ -450,6 +465,9 @@ export class TimingStore {
       source,
       mode,
       weather: this.weather ?? this.snapshot.weather,
+      meetingSessions: this.meetingSessions.length
+        ? this.meetingSessions
+        : this.snapshot.meetingSessions,
       teams,
       meeting: this.meeting
         ? {
@@ -494,7 +512,12 @@ export class TimingStore {
     this.pits = [];
     this.weather = null;
     const { authenticated, restricted, notice } = this.snapshot;
-    this.snapshot = emptySnapshot({ authenticated, restricted, notice });
+    this.snapshot = emptySnapshot({
+      authenticated,
+      restricted,
+      notice,
+      meetingSessions: this.meetingSessions,
+    });
   }
 
   private queueEmit() {

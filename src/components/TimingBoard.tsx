@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   formatGap,
   formatLapTime,
@@ -13,11 +14,23 @@ import { emptySnapshot } from "../../shared/timing";
 
 const WS_URL = process.env.NEXT_PUBLIC_INGEST_WS ?? "";
 
-export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
+export function TimingBoard({
+  initial,
+  sessionKey,
+}: {
+  initial?: TimingSnapshot;
+  sessionKey?: string;
+}) {
+  const router = useRouter();
   const [snapshot, setSnapshot] = useState<TimingSnapshot>(
     initial ?? emptySnapshot(),
   );
   const [connected, setConnected] = useState(false);
+  const browsing = Boolean(sessionKey);
+
+  useEffect(() => {
+    setSnapshot(initial ?? emptySnapshot());
+  }, [initial]);
 
   useEffect(() => {
     let closed = false;
@@ -26,7 +39,10 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
 
     const loadHttp = async () => {
       try {
-        const response = await fetch("/api/timing", { cache: "no-store" });
+        const path = sessionKey
+          ? `/api/timing?session=${encodeURIComponent(sessionKey)}`
+          : "/api/timing";
+        const response = await fetch(path, { cache: "no-store" });
         if (!response.ok) return;
         setSnapshot((await response.json()) as TimingSnapshot);
       } catch {
@@ -59,13 +75,13 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
       socket.onerror = () => socket?.close();
     };
 
-    const poll = WS_URL
+    const poll = WS_URL && !browsing
       ? null
       : setInterval(() => {
           void loadHttp();
-        }, 15_000);
+        }, browsing ? 30_000 : 15_000);
 
-    if (WS_URL) connect();
+    if (WS_URL && !browsing) connect();
     else void loadHttp();
 
     return () => {
@@ -74,7 +90,34 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
       if (retry) clearTimeout(retry);
       socket?.close();
     };
-  }, []);
+  }, [browsing, sessionKey]);
+
+  const meetingSessions = snapshot.meetingSessions ?? [];
+  const selectSession = useCallback(
+    (key: string | number) => {
+      const next = String(key);
+      const latestKey = String(
+        meetingSessions.at(-1)?.key ?? snapshot.session?.key ?? "",
+      );
+      const goLatest = next === latestKey;
+      if (goLatest && !sessionKey) return;
+      if (!goLatest && sessionKey === next) return;
+      router.replace(goLatest ? "/" : `/?session=${next}`, { scroll: false });
+      void (async () => {
+        try {
+          const path = goLatest
+            ? "/api/timing"
+            : `/api/timing?session=${encodeURIComponent(next)}`;
+          const response = await fetch(path, { cache: "no-store" });
+          if (!response.ok) return;
+          setSnapshot((await response.json()) as TimingSnapshot);
+        } catch {
+          /* keep current board */
+        }
+      })();
+    },
+    [router, sessionKey, meetingSessions, snapshot.session?.key],
+  );
 
   const modeLabel = useMemo(() => {
     if (snapshot.mode === "live") return "LIVE";
@@ -126,6 +169,29 @@ export function TimingBoard({ initial }: { initial?: TimingSnapshot }) {
             </span>
           </div>
         </div>
+        {snapshot.source !== "fixture" &&
+        !snapshot.restricted &&
+        meetingSessions.length > 1 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {meetingSessions.map((item) => {
+              const active = String(item.key) === String(snapshot.session?.key);
+              return (
+                <button
+                  key={String(item.key)}
+                  type="button"
+                  onClick={() => selectSession(item.key)}
+                  className={`rounded-full px-3 py-1 text-xs transition ${
+                    active
+                      ? "bg-foreground font-medium text-background dark:bg-accent/15 dark:text-accent"
+                      : "bg-chip text-muted hover:text-foreground"
+                  }`}
+                >
+                  {item.name}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
         {weather ? (
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             <span className="chip">Air {fmtTemp(weather.airTemp)}</span>

@@ -59,6 +59,12 @@ export const metadata: Metadata = {
     description:
       "Live session timing, championship tables, calendar, and podium picks. Unofficial fan project.",
   },
+  appleWebApp: {
+    capable: true,
+    title: "Gridwatch",
+    statusBarStyle: "black-translucent",
+    startupImage: "/logo.png",
+  },
   robots: { index: true, follow: true },
 };
 

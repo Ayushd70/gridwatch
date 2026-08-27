@@ -12,6 +12,7 @@ import {
   fetchQualifying,
   fetchRaceResults,
   fetchSprint,
+  placesGained,
   raceDate,
   type QualifyingResult,
   type RaceResult,
@@ -73,83 +74,142 @@ export default async function ResultsPage({
         <LastYearStrip data={lastYear} currentSeason={calendar.season} />
       ) : null}
 
-      {race ? <ResultTable title="Race" rows={race.results} kind="race" /> : null}
-      {sprint.length > 0 ? <ResultTable title="Sprint" rows={sprint} kind="sprint" /> : null}
+      {race ? (
+        <ResultTable title="Race" rows={race.results} showGrid />
+      ) : null}
+      {sprint.length > 0 ? (
+        <ResultTable title="Sprint" rows={sprint} showGrid />
+      ) : null}
       {qualifying.length > 0 ? <QualiTable rows={qualifying} /> : null}
     </>
   );
 }
 
+function formatDelta(delta: number) {
+  if (delta > 0) return `+${delta}`;
+  return String(delta);
+}
+
 function ResultTable({
   title,
   rows,
-  kind,
+  showGrid,
 }: {
   title: string;
   rows: RaceResult[];
-  kind: "race" | "sprint";
+  showGrid?: boolean;
 }) {
+  const fastest = rows.find((row) => row.FastestLap?.rank === "1");
+  const movers = rows
+    .map((row) => ({ row, delta: placesGained(row) }))
+    .filter((item): item is { row: RaceResult; delta: number } => item.delta != null);
+  const best = movers.reduce<{ row: RaceResult; delta: number } | null>(
+    (current, item) => {
+      if (!current || item.delta > current.delta) return item;
+      return current;
+    },
+    null,
+  );
+  const gainer =
+    best && best.delta > 0
+      ? `Biggest gainer · ${best.row.Driver.givenName} ${best.row.Driver.familyName} (${formatDelta(best.delta)})`
+      : null;
+  const fl =
+    fastest?.FastestLap?.Time?.time
+      ? `Fastest lap · ${fastest.Driver.familyName} · ${fastest.FastestLap.Time.time}`
+      : null;
+
   return (
     <section className="panel mt-6">
-      <h2 className="border-b border-border px-4 py-3 font-display text-xl text-foreground">
-        {title}
-      </h2>
-      <table className="w-full text-sm">
-        <thead className="text-[11px] uppercase tracking-[0.14em] text-subtle">
-          <tr>
-            <th className="px-4 py-2 text-left font-medium">P</th>
-            <th className="px-4 py-2 text-left font-medium">Driver</th>
-            {kind === "race" ? (
-              <th className="hidden px-4 py-2 text-right font-medium sm:table-cell">
-                Grid
-              </th>
-            ) : null}
-            <th className="px-4 py-2 text-right font-medium">Time / status</th>
-            <th className="px-4 py-2 text-right font-medium">Pts</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={`${row.Driver.driverId}-${row.position}`}
-              className="border-t border-border"
-            >
-              <td className="px-4 py-2.5 font-mono text-muted">
-                {row.positionText ?? row.position}
-              </td>
-              <td className="px-4 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-4 w-1.5 rounded-full"
-                    style={{
-                      background: teamSwatch(
-                        constructorColor(row.Constructor.constructorId),
-                      ),
-                    }}
-                  />
-                  <span className="text-foreground">
-                    {row.Driver.givenName} {row.Driver.familyName}
-                  </span>
-                </div>
-                <div className="pl-3.5 text-xs text-subtle">
-                  {row.Constructor.name}
-                </div>
-              </td>
-              {kind === "race" ? (
-                <td className="hidden px-4 py-2.5 text-right font-mono text-subtle sm:table-cell">
-                  {row.grid ?? "—"}
-                </td>
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="font-display text-xl text-foreground">{title}</h2>
+        {gainer || fl ? (
+          <p className="mt-1 text-xs text-muted">
+            {[gainer, fl].filter(Boolean).join(" · ")}
+          </p>
+        ) : null}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[28rem] text-sm">
+          <thead className="text-[11px] uppercase tracking-[0.14em] text-subtle">
+            <tr>
+              <th className="px-4 py-2 text-left font-medium">P</th>
+              <th className="px-4 py-2 text-left font-medium">Driver</th>
+              {showGrid ? (
+                <th className="hidden px-4 py-2 text-right font-medium sm:table-cell">
+                  Grid
+                </th>
               ) : null}
-              <td className="px-4 py-2.5 text-right font-mono text-muted">
-                {row.Time?.time ?? row.status}
-              </td>
-              <td className="px-4 py-2.5 text-right font-mono text-foreground">
-                {row.points}
-              </td>
+              {showGrid ? (
+                <th className="px-4 py-2 text-right font-medium">+/-</th>
+              ) : null}
+              <th className="px-4 py-2 text-right font-medium">Time / status</th>
+              <th className="px-4 py-2 text-right font-medium">Pts</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const delta = showGrid ? placesGained(row) : null;
+              const isFastest = row.FastestLap?.rank === "1";
+              return (
+                <tr
+                  key={`${row.Driver.driverId}-${row.position}`}
+                  className="border-t border-border"
+                >
+                  <td className="px-4 py-2.5 font-mono text-muted">
+                    {row.positionText ?? row.position}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-4 w-1.5 rounded-full"
+                        style={{
+                          background: teamSwatch(
+                            constructorColor(row.Constructor.constructorId),
+                          ),
+                        }}
+                      />
+                      <span className="text-foreground">
+                        {row.Driver.givenName} {row.Driver.familyName}
+                      </span>
+                      {isFastest ? (
+                        <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                          FL
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="pl-3.5 text-xs text-subtle">
+                      {row.Constructor.name}
+                    </div>
+                  </td>
+                  {showGrid ? (
+                    <td className="hidden px-4 py-2.5 text-right font-mono text-subtle sm:table-cell">
+                      {row.grid ?? "—"}
+                    </td>
+                  ) : null}
+                  {showGrid ? (
+                    <td
+                      className={`px-4 py-2.5 text-right font-mono ${
+                        delta != null && delta > 0
+                          ? "text-emerald-700 dark:text-emerald-400"
+                          : "text-subtle"
+                      }`}
+                    >
+                      {delta == null ? "—" : formatDelta(delta)}
+                    </td>
+                  ) : null}
+                  <td className="px-4 py-2.5 text-right font-mono text-muted">
+                    {row.Time?.time ?? row.status}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-mono text-foreground">
+                    {row.points}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

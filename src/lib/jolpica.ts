@@ -349,6 +349,29 @@ export function weekendSessions(race: Race): WeekendSession[] {
   return items.sort((a, b) => a.at.getTime() - b.at.getTime());
 }
 
+export function remainingTitlePoints(races: Race[], afterRound: string) {
+  const remaining = races.filter(
+    (race) => Number(race.round) > Number(afterRound),
+  );
+  const grandsPrix = remaining.length;
+  const sprints = remaining.filter((race) => race.Sprint).length;
+  return {
+    grandsPrix,
+    sprints,
+    driver: grandsPrix * 25 + sprints * 8,
+    constructor: grandsPrix * 43 + sprints * 15,
+  };
+}
+
+export function placesGained(row: RaceResult) {
+  const grid = Number(row.grid);
+  const position = Number(row.position);
+  const classified = /^\d+$/.test(row.positionText ?? row.position);
+  if (!classified || !Number.isFinite(grid) || grid <= 0) return null;
+  if (!Number.isFinite(position) || position <= 0) return null;
+  return grid - position;
+}
+
 export function currentTime() {
   return Date.now();
 }

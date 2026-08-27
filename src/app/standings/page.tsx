@@ -4,8 +4,10 @@ import { formatChampionshipGap, teamSwatch } from "@/lib/format";
 import {
   championshipGaps,
   constructorColor,
+  fetchCalendar,
   fetchConstructorStandings,
   fetchDriverStandings,
+  remainingTitlePoints,
 } from "@/lib/jolpica";
 
 export const dynamic = "force-dynamic";
@@ -13,15 +15,25 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Standings" };
 
 export default async function StandingsPage() {
-  const [drivers, constructors] = await Promise.all([
+  const [drivers, constructors, calendar] = await Promise.all([
     fetchDriverStandings(),
     fetchConstructorStandings(),
+    fetchCalendar(),
   ]);
 
+  const remaining = remainingTitlePoints(calendar.races, drivers.round);
   const driverGaps = championshipGaps(drivers.standings.map((row) => row.points));
   const constructorGaps = championshipGaps(
     constructors.standings.map((row) => row.points),
   );
+  const leaderPts = Number(drivers.standings[0]?.points ?? 0);
+  const teamLeaderPts = Number(constructors.standings[0]?.points ?? 0);
+  const driversAlive = drivers.standings.filter(
+    (row) => Number(row.points) + remaining.driver >= leaderPts,
+  ).length;
+  const teamsAlive = constructors.standings.filter(
+    (row) => Number(row.points) + remaining.constructor >= teamLeaderPts,
+  ).length;
   const p2Gap = driverGaps[1]?.toLeader;
   const p2Label =
     p2Gap != null && p2Gap > 0
@@ -29,12 +41,19 @@ export default async function StandingsPage() {
           p2Gap === 1 ? "" : "s"
         } behind the lead.`
       : null;
+  const mathLabel =
+    remaining.grandsPrix > 0
+      ? `${driversAlive} driver${driversAlive === 1 ? "" : "s"} and ${teamsAlive} team${
+          teamsAlive === 1 ? "" : "s"
+        } can still win (${remaining.driver} pts left for a driver, ${remaining.constructor} for a constructor).`
+      : null;
 
   return (
     <>
       <PageHeading kicker="Official season tables · Jolpica" title={`${drivers.season} championship`}>
         After round {drivers.round}
         {p2Label ? <p className="mt-1">{p2Label}</p> : null}
+        {mathLabel ? <p className="mt-1">{mathLabel}</p> : null}
       </PageHeading>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -53,6 +72,7 @@ export default async function StandingsPage() {
               wins: row.wins,
               leader: formatChampionshipGap(gaps.toLeader, "leader"),
               interval: formatChampionshipGap(gaps.interval, "interval"),
+              out: Number(row.points) + remaining.driver < leaderPts,
             };
           })}
         />
@@ -69,6 +89,7 @@ export default async function StandingsPage() {
               wins: row.wins,
               leader: formatChampionshipGap(gaps.toLeader, "leader"),
               interval: formatChampionshipGap(gaps.interval, "interval"),
+              out: Number(row.points) + remaining.constructor < teamLeaderPts,
             };
           })}
         />
@@ -92,6 +113,7 @@ function StandingsTable({
     wins: string;
     leader: string;
     interval: string;
+    out?: boolean;
   }[];
 }) {
   return (
@@ -124,6 +146,11 @@ function StandingsTable({
                       style={{ background: teamSwatch(row.color) }}
                     />
                     <span className="text-foreground">{row.name}</span>
+                    {row.out ? (
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-subtle">
+                        out
+                      </span>
+                    ) : null}
                   </div>
                   {row.sub ? (
                     <div className="pl-3.5 text-xs text-subtle">{row.sub}</div>

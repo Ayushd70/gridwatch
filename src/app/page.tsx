@@ -12,9 +12,15 @@ import { getTimingSnapshot } from "@/lib/session-snapshot";
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session?: string | string[] }>;
+}) {
+  const query = await searchParams;
+  const sessionKey = typeof query.session === "string" ? query.session : undefined;
   const [initial, last, calendar] = await Promise.all([
-    getTimingSnapshot(),
+    getTimingSnapshot(sessionKey),
     fetchLastResults(),
     fetchCalendar(),
   ]);
@@ -32,7 +38,7 @@ export default async function HomePage() {
         lastYear={lastYear}
         currentSeason={calendar.season}
       />
-      <TimingBoard initial={initial} />
+      <TimingBoard initial={initial} sessionKey={sessionKey} />
     </>
   );
 }

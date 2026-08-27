@@ -25,6 +25,7 @@ type BootstrapOptions = {
   /** Skip the heavy laps feed. Use this on Vercel so the function stays under the time limit. */
   lean?: boolean;
   pauseMs?: number;
+  sessionKey?: string | number;
 };
 
 export async function fillStoreFromRest(
@@ -33,12 +34,14 @@ export async function fillStoreFromRest(
 ): Promise<boolean> {
   const token = options.token;
   const pause = options.pauseMs ?? 400;
+  const requested = options.sessionKey;
+  const sessionQuery =
+    requested != null && requested !== "" && requested !== "latest"
+      ? `/v1/sessions?session_key=${requested}`
+      : "/v1/sessions?session_key=latest";
 
   try {
-    const sessions = await openf1Get<OpenF1Session[]>(
-      "/v1/sessions?session_key=latest",
-      token,
-    );
+    const sessions = await openf1Get<OpenF1Session[]>(sessionQuery, token);
     const session = sessions[0];
     if (!session) throw new Error("No latest session");
     store.applySession(session, "rest");
@@ -52,6 +55,17 @@ export async function fillStoreFromRest(
       if (meetings[0]) store.applyMeeting(meetings[0], "rest");
     } catch (error) {
       console.warn("meetings fetch skipped", error);
+    }
+
+    await sleep(pause);
+    try {
+      const weekend = await openf1Get<OpenF1Session[]>(
+        `/v1/sessions?meeting_key=${session.meeting_key}`,
+        token,
+      );
+      if (weekend.length) store.applyMeetingSessions(weekend, "rest");
+    } catch (error) {
+      console.warn("meeting sessions fetch skipped", error);
     }
 
     const key = session.session_key;
@@ -176,10 +190,12 @@ export async function fillStoreFromRest(
       restricted: false,
       authenticated: Boolean(token),
       notice: token
-        ? "Showing latest OpenF1 session via authenticated REST."
+        ? requested
+          ? `Showing OpenF1 ${session.session_name} via authenticated REST.`
+          : "Showing latest OpenF1 session via authenticated REST."
         : session.date_end && Date.parse(session.date_end) < Date.now()
-          ? `Replay of the latest OpenF1 session (${session.session_name} at ${session.circuit_short_name ?? session.location}).`
-          : "Showing latest OpenF1 session via free historical REST.",
+          ? `Replay of ${requested ? "this" : "the latest"} OpenF1 session (${session.session_name} at ${session.circuit_short_name ?? session.location}).`
+          : "Showing OpenF1 session via free historical REST.",
     });
     return true;
   } catch (error) {
