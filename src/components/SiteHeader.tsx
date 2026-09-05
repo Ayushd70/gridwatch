@@ -4,14 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-
-const links = [
-  { href: "/", label: "Live timing" },
-  { href: "/standings", label: "Standings" },
-  { href: "/results", label: "Results" },
-  { href: "/calendar", label: "Calendar" },
-  { href: "/predict", label: "Predict" },
-];
+import { visiblePageLinks } from "@/lib/nav";
 
 export function SiteHeader() {
   const pathname = usePathname() ?? "/";
@@ -25,7 +18,7 @@ export function SiteHeader() {
         </Link>
         <nav className="order-last w-full min-w-0 sm:order-none sm:ml-auto sm:w-auto">
           <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-full bg-chip p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {links.map((link) => {
+            {visiblePageLinks().map((link) => {
               const active =
                 pathname === link.href ||
                 (link.href !== "/" && pathname.startsWith(link.href));

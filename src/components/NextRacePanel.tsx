@@ -1,26 +1,28 @@
 import Link from "next/link";
 import { RaceCountdown } from "@/components/RaceCountdown";
-import { formatSessionWhen, formatWhen } from "@/lib/format";
-import {
-  currentTime,
-  raceDate,
-  weekendSessions,
-  type Race,
-} from "@/lib/jolpica";
+import { WeekendTimetable } from "@/components/WeekendTimetable";
+import { formatWhen } from "@/lib/format";
+import { currentTime, raceDate, weekendSessions, type Race } from "@/lib/jolpica";
 
-export function NextRacePanel({ race }: { race: Race }) {
+export function NextRacePanel({
+  race,
+  currentWeekend = false,
+}: {
+  race: Race;
+  currentWeekend?: boolean;
+}) {
   const start = raceDate(race);
-  const sessions = weekendSessions(race);
   const now = currentTime();
-  const nextSession =
-    sessions.find((session) => session.at.getTime() > now) ?? sessions.at(-1);
+  const sessions = weekendSessions(race);
+  const sprintWeekend = Boolean(race.Sprint || race.SprintQualifying);
 
   return (
     <section className="panel mb-6 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-[0.16em] text-subtle">
-            Round {race.round} · Next race
+            Round {race.round} · {currentWeekend ? "This weekend" : "Next race"}
+            {sprintWeekend ? " · sprint" : null}
           </p>
           <h2 className="mt-1 font-display text-3xl tracking-tight text-foreground sm:text-4xl">
             {race.raceName}
@@ -33,37 +35,11 @@ export function NextRacePanel({ race }: { race: Race }) {
             Lights out {formatWhen(start.toISOString())}
           </p>
 
-          {sessions.length > 0 ? (
-            <ol className="mt-4 grid gap-1.5 text-sm sm:grid-cols-2">
-              {sessions.map((session) => {
-                const active = session.label === nextSession?.label;
-                return (
-                  <li
-                    key={`${session.label}-${session.at.toISOString()}`}
-                    className={`flex items-baseline justify-between gap-3 rounded-lg px-2 py-1 ${
-                      active ? "bg-[var(--leader)]" : ""
-                    }`}
-                  >
-                    <span
-                      className={active ? "text-foreground" : "text-muted"}
-                    >
-                      {session.label}
-                    </span>
-                    <span className="shrink-0 font-mono text-xs text-subtle">
-                      {formatSessionWhen(session.at)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          ) : null}
+          {sessions.length > 0 ? <WeekendTimetable race={race} now={now} /> : null}
 
           <div className="mt-4 flex flex-wrap gap-3 text-sm font-medium">
             <Link href="/calendar" className="text-accent hover:underline">
               Season calendar
-            </Link>
-            <Link href="/predict" className="text-accent hover:underline">
-              Podium pick
             </Link>
           </div>
         </div>

@@ -1,14 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { BrandLockup } from "@/components/Logo";
-
-const pageLinks = [
-  { href: "/", label: "Live timing" },
-  { href: "/standings", label: "Standings" },
-  { href: "/results", label: "Results" },
-  { href: "/calendar", label: "Calendar" },
-  { href: "/predict", label: "Predict" },
-];
+import { visiblePageLinks } from "@/lib/nav";
 
 export function SiteFooter() {
   return (
@@ -17,9 +10,8 @@ export function SiteFooter() {
         <div className="sm:col-span-2 lg:col-span-1">
           <BrandLockup compact />
           <p className="mt-3 max-w-xs text-xs leading-5 text-subtle">
-            Fan timing board for race weekends. Positions, gaps, the
-            championship, and a simple podium pick. Not F1, not the FIA, not a
-            team.
+            Fan timing board for race weekends. Positions, gaps, and the
+            championship. Not F1, not the FIA, not a team.
           </p>
         </div>
         <div>
@@ -27,7 +19,7 @@ export function SiteFooter() {
             Pages
           </p>
           <ul className="mt-3 space-y-1.5 text-sm">
-            {pageLinks.map((link) => (
+            {visiblePageLinks().map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}

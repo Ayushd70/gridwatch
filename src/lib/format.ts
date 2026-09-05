@@ -34,6 +34,13 @@ export function tyreClass(compound: string | null | undefined) {
   return "tyre-unknown";
 }
 
+/** Display clocks in India Standard Time. */
+export const DISPLAY_TIME_ZONE = "Asia/Kolkata";
+
+const istDate = {
+  timeZone: DISPLAY_TIME_ZONE,
+} as const;
+
 export function teamSwatch(color: string) {
   const hex = color.replace("#", "");
   return `#${hex}`;
@@ -43,10 +50,11 @@ export function formatWhen(iso: string | null | undefined) {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return new Intl.DateTimeFormat(undefined, {
+  return `${new Intl.DateTimeFormat("en-IN", {
+    ...istDate,
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(date);
+  }).format(date)} IST`;
 }
 
 export function formatDay(isoOrDate: string | null | undefined) {
@@ -55,18 +63,40 @@ export function formatDay(isoOrDate: string | null | undefined) {
     isoOrDate.includes("T") ? isoOrDate : `${isoOrDate}T12:00:00Z`,
   );
   if (Number.isNaN(date.getTime())) return isoOrDate;
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+  return new Intl.DateTimeFormat("en-IN", {
+    ...istDate,
+    dateStyle: "medium",
+  }).format(date);
 }
 
 export function formatSessionWhen(iso: string | Date) {
   const date = iso instanceof Date ? iso : new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
+  return `${new Intl.DateTimeFormat("en-IN", {
+    ...istDate,
     hour: "numeric",
     minute: "2-digit",
+  }).format(date)} IST`;
+}
+
+export function formatIstWeekday(iso: string | Date) {
+  const date = iso instanceof Date ? iso : new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-IN", {
+    ...istDate,
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
+export function istDayKey(iso: string | Date) {
+  const date = iso instanceof Date ? iso : new Date(iso);
+  return new Intl.DateTimeFormat("en-CA", {
+    ...istDate,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(date);
 }
 

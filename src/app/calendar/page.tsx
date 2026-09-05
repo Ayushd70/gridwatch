@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeading } from "@/components/SiteChrome";
-import { currentTime, fetchCalendar, nextOrCurrentRace, raceDate } from "@/lib/jolpica";
+import { WeekendTimetable } from "@/components/WeekendTimetable";
 import { formatWhen } from "@/lib/format";
+import {
+  currentTime,
+  fetchCalendar,
+  isCurrentWeekend,
+  nextOrCurrentRace,
+  raceDate,
+} from "@/lib/jolpica";
 
 export const dynamic = "force-dynamic";
 
@@ -23,48 +30,55 @@ export default async function CalendarPage() {
       <ul className="panel divide-y divide-border">
         {races.map((race) => {
           const start = raceDate(race);
-          const isNext = upcoming?.round === race.round;
+          const isFeatured = upcoming?.round === race.round;
+          const thisWeekend = isFeatured && isCurrentWeekend(race, now);
           const done = start.getTime() + 4 * 60 * 60 * 1000 < now;
+          const sprintWeekend = Boolean(race.Sprint || race.SprintQualifying);
           return (
             <li
               key={`${race.season}-${race.round}`}
-              className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 ${
-                isNext ? "bg-[var(--leader)]" : ""
-              }`}
+              className={`px-4 py-3.5 ${isFeatured ? "bg-[var(--leader)]" : ""}`}
             >
-              <div>
-                <p className="flex flex-wrap items-center gap-2 text-xs text-subtle">
-                  <span>R{race.round}</span>
-                  {isNext ? (
-                    <span className="rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">
-                      Up next
-                    </span>
-                  ) : done ? (
-                    <span>Done</span>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="flex flex-wrap items-center gap-2 text-xs text-subtle">
+                    <span>R{race.round}</span>
+                    {thisWeekend ? (
+                      <span className="rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">
+                        This weekend
+                      </span>
+                    ) : isFeatured ? (
+                      <span className="rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">
+                        Up next
+                      </span>
+                    ) : done ? (
+                      <span>Done</span>
+                    ) : null}
+                    {sprintWeekend ? <span>· sprint</span> : null}
+                  </p>
+                  <p className="mt-0.5 font-display text-xl tracking-tight text-foreground">
+                    {race.raceName}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {race.Circuit.circuitName} · {race.Circuit.Location.locality},{" "}
+                    {race.Circuit.Location.country}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {done ? (
+                    <Link
+                      href={`/results?round=${race.round}`}
+                      className="text-sm font-medium text-accent hover:underline"
+                    >
+                      Results
+                    </Link>
                   ) : null}
-                  {race.Sprint ? <span>· sprint</span> : null}
-                </p>
-                <p className="mt-0.5 font-display text-xl tracking-tight text-foreground">
-                  {race.raceName}
-                </p>
-                <p className="text-sm text-muted">
-                  {race.Circuit.circuitName} · {race.Circuit.Location.locality},{" "}
-                  {race.Circuit.Location.country}
-                </p>
+                  <p className="font-mono text-sm text-muted">
+                    {formatWhen(start.toISOString())}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                {done ? (
-                  <Link
-                    href={`/results?round=${race.round}`}
-                    className="text-sm font-medium text-accent hover:underline"
-                  >
-                    Results
-                  </Link>
-                ) : null}
-                <p className="font-mono text-sm text-muted">
-                  {formatWhen(start.toISOString())}
-                </p>
-              </div>
+              {isFeatured ? <WeekendTimetable race={race} now={now} /> : null}
             </li>
           );
         })}

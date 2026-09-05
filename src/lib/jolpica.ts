@@ -339,11 +339,11 @@ export function weekendSessions(race: Race): WeekendSession[] {
     if (!slot?.date) return;
     items.push({ label, at: sessionDate(slot) });
   };
-  add("Practice 1", race.FirstPractice);
-  add("Sprint quali", race.SprintQualifying);
-  add("Practice 2", race.SecondPractice);
+  add("FP1", race.FirstPractice);
+  add("Sprint Qualifying", race.SprintQualifying);
+  add("FP2", race.SecondPractice);
   add("Sprint", race.Sprint);
-  add("Practice 3", race.ThirdPractice);
+  add("FP3", race.ThirdPractice);
   add("Qualifying", race.Qualifying);
   add("Race", { date: race.date, time: race.time });
   return items.sort((a, b) => a.at.getTime() - b.at.getTime());
@@ -385,6 +385,16 @@ export function nextOrCurrentRace(races: Race[], now = new Date(currentTime())) 
     sorted.at(-1) ??
     null
   );
+}
+
+/** First session's UTC date through four hours after lights out. */
+export function isCurrentWeekend(race: Race, now = currentTime()) {
+  const sessions = weekendSessions(race);
+  const first = sessions[0]?.at;
+  const start = first
+    ? Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), first.getUTCDate())
+    : new Date(`${race.date}T00:00:00Z`).getTime();
+  return now >= start && now < raceDate(race).getTime() + 4 * 60 * 60 * 1000;
 }
 
 export function constructorColor(id: string) {

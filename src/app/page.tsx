@@ -5,7 +5,8 @@ import {
   fetchCalendar,
   fetchLastResults,
   fetchLastYearAtCircuit,
-  nextUpcomingRace,
+  isCurrentWeekend,
+  nextOrCurrentRace,
 } from "@/lib/jolpica";
 import { getTimingSnapshot } from "@/lib/session-snapshot";
 
@@ -24,15 +25,18 @@ export default async function HomePage({
     fetchLastResults(),
     fetchCalendar(),
   ]);
-  const upcoming = nextUpcomingRace(calendar.races);
+  const featured = nextOrCurrentRace(calendar.races);
   const lastYear = await fetchLastYearAtCircuit(
-    last.circuit?.circuitId ?? upcoming?.Circuit.circuitId,
+    last.circuit?.circuitId ?? featured?.Circuit.circuitId,
     calendar.season,
   );
+  const currentWeekend = Boolean(featured && isCurrentWeekend(featured));
 
   return (
     <>
-      {upcoming ? <NextRacePanel race={upcoming} /> : null}
+      {featured ? (
+        <NextRacePanel race={featured} currentWeekend={currentWeekend} />
+      ) : null}
       <WeekendStrip
         last={last}
         lastYear={lastYear}

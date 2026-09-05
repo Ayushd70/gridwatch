@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     template: "%s · Gridwatch",
   },
   description:
-    "Live session timing, championship tables, calendar, and podium picks for racing fans. Unofficial.",
+    "Live session timing, championship tables, and the race calendar for racing fans. Unofficial.",
   applicationName: "Gridwatch",
   authors: [{ name: "Ayush Dubey", url: "https://ayushd70.dev" }],
   creator: "Ayush Dubey",
@@ -51,13 +51,13 @@ export const metadata: Metadata = {
     siteName: "Gridwatch",
     title: "Gridwatch — unofficial fan timing",
     description:
-      "Live session timing, championship tables, calendar, and podium picks. Unofficial fan project.",
+      "Live session timing, championship tables, and the race calendar. Unofficial fan project.",
   },
   twitter: {
     card: "summary_large_image",
     title: "Gridwatch — unofficial fan timing",
     description:
-      "Live session timing, championship tables, calendar, and podium picks. Unofficial fan project.",
+      "Live session timing, championship tables, and the race calendar. Unofficial fan project.",
   },
   appleWebApp: {
     capable: true,
