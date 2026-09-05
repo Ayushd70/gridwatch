@@ -1,5 +1,8 @@
 export type TimingMode = "live" | "replay" | "idle";
-export type TimingSource = "mqtt" | "rest" | "fixture";
+export type TimingSource = "mqtt" | "rest";
+
+export const LIVE_SESSION_LOCKED_NOTICE =
+  "OpenF1 locks the free feed while a session is live. Replay will appear here after it ends.";
 
 export type TimingRow = {
   driverNumber: number;
@@ -116,4 +119,14 @@ export function emptySnapshot(
     updatedAt: new Date().toISOString(),
     ...partial,
   };
+}
+
+export function restrictedSnapshot(
+  partial: Partial<TimingSnapshot> = {},
+): TimingSnapshot {
+  return emptySnapshot({
+    restricted: true,
+    notice: LIVE_SESSION_LOCKED_NOTICE,
+    ...partial,
+  });
 }

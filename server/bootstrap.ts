@@ -1,4 +1,4 @@
-import { sampleSnapshot } from "./fixture";
+import { LIVE_SESSION_LOCKED_NOTICE, restrictedSnapshot } from "../shared/timing";
 import {
   OpenF1Error,
   openf1Get,
@@ -200,13 +200,15 @@ export async function fillStoreFromRest(
     return true;
   } catch (error) {
     if (error instanceof OpenF1Error && error.restricted) {
-      store.replaceSnapshot(sampleSnapshot());
+      store.replaceSnapshot(
+        restrictedSnapshot({ authenticated: Boolean(token) }),
+      );
       store.setMeta({
         restricted: true,
         authenticated: Boolean(token),
         notice: token
           ? "Authenticated, but OpenF1 still locked this session."
-          : sampleSnapshot().notice,
+          : LIVE_SESSION_LOCKED_NOTICE,
       });
       return false;
     }

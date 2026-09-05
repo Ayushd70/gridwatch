@@ -13,7 +13,7 @@ Used for whatever is happening (or just happened) in a session: order, intervals
 
 The ingest process (`server/index.ts`) logs in if `.env` has credentials, refreshes the token about every 50 minutes, and fans a single snapshot out over WebSocket. Browsers should not hit OpenF1 directly — you'll rate-limit yourself and leak the password.
 
-If a session is live and you're not logged in, OpenF1 returns a lock message. Gridwatch shows a sample board in that case so you can keep working on the UI.
+If a session is live and you're not logged in, OpenF1 returns a lock message. Gridwatch shows that the live board is closed until the session ends and replay is free again.
 
 ## Jolpica
 

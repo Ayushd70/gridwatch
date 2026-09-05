@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LastYearStrip } from "@/components/LastYearStrip";
 import { PageHeading } from "@/components/SiteChrome";
+import { WeekendResults } from "@/components/WeekendResults";
 import { formatWhen, teamSwatch } from "@/lib/format";
 import {
   constructorColor,
@@ -12,11 +13,16 @@ import {
   fetchQualifying,
   fetchRaceResults,
   fetchSprint,
+  nextOrCurrentRace,
   placesGained,
   raceDate,
-  type QualifyingResult,
+  weekendSessions,
   type RaceResult,
 } from "@/lib/jolpica";
+import {
+  fetchWeekendSessionResults,
+  fromErgastQualifying,
+} from "@/lib/weekend-results";
 
 export const dynamic = "force-dynamic";
 
@@ -29,13 +35,32 @@ export default async function ResultsPage({
 }) {
   const query = await searchParams;
   const [calendar, last] = await Promise.all([fetchCalendar(), fetchLastResults()]);
-  const round = typeof query.round === "string" ? query.round : last.round;
+  const now = currentTime();
+  const featured = nextOrCurrentRace(calendar.races);
+  const weekendStarted = (race: (typeof calendar.races)[number]) => {
+    const first = weekendSessions(race)[0];
+    return (first?.at.getTime() ?? raceDate(race).getTime()) <= now;
+  };
+  const raceFinished = (race: (typeof calendar.races)[number]) =>
+    raceDate(race).getTime() + 4 * 60 * 60 * 1000 < now;
+  const defaultRound =
+    featured && weekendStarted(featured) && !raceFinished(featured)
+      ? featured.round
+      : last.round;
+  const round = typeof query.round === "string" ? query.round : defaultRound;
   const calendarRace = calendar.races.find((item) => item.round === round);
-  const [race, qualifying, sprint] = await Promise.all([
+  const [race, qualifying, sprint, weekend] = await Promise.all([
     fetchRaceResults(round),
     fetchQualifying(round),
     fetchSprint(round),
+    fetchWeekendSessionResults({
+      season: calendar.season,
+      round,
+    }),
   ]);
+  const qualiRows = qualifying.length
+    ? fromErgastQualifying(qualifying)
+    : weekend.qualifying;
   const lastYear = await fetchLastYearAtCircuit(
     calendarRace?.Circuit.circuitId ?? race?.circuit.circuitId,
     calendar.season,
@@ -43,16 +68,21 @@ export default async function ResultsPage({
 
   return (
     <>
-      <PageHeading kicker="Official results · Jolpica" title={race?.raceName ?? "Results"}>
+      <PageHeading
+        kicker="Official results · Jolpica"
+        title={race?.raceName ?? calendarRace?.raceName ?? "Results"}
+      >
         {race
           ? `${race.circuit.circuitName} · ${formatWhen(`${race.date}T12:00:00Z`)}`
-          : "Results are not published for this round yet."}
+          : calendarRace
+            ? `${calendarRace.Circuit.circuitName} · ${calendarRace.Circuit.Location.locality}`
+            : "Results are not published for this round yet."}
       </PageHeading>
 
       <div className="mb-2 flex flex-wrap gap-2">
         {calendar.races.map((item) => {
-          const done = raceDate(item).getTime() + 4 * 60 * 60 * 1000 < currentTime();
-          if (!done && item.round !== last.round) return null;
+          const done = raceFinished(item);
+          if (!weekendStarted(item) && item.round !== last.round) return null;
           const active = item.round === round;
           return (
             <Link
@@ -80,7 +110,14 @@ export default async function ResultsPage({
       {sprint.length > 0 ? (
         <ResultTable title="Sprint" rows={sprint} showGrid />
       ) : null}
-      {qualifying.length > 0 ? <QualiTable rows={qualifying} /> : null}
+      <div className="mt-6">
+        <WeekendResults
+          practices={weekend.practices}
+          qualifying={qualiRows}
+          sprintQualifying={weekend.sprintQualifying}
+          sprint={sprint.length > 0 ? [] : weekend.sprint}
+        />
+      </div>
     </>
   );
 }
@@ -210,58 +247,6 @@ function ResultTable({
           </tbody>
         </table>
       </div>
-    </section>
-  );
-}
-
-function QualiTable({ rows }: { rows: QualifyingResult[] }) {
-  return (
-    <section className="panel mt-6">
-      <h2 className="border-b border-border px-4 py-3 font-display text-xl text-foreground">
-        Qualifying
-      </h2>
-      <table className="w-full text-sm">
-        <thead className="text-[11px] uppercase tracking-[0.14em] text-subtle">
-          <tr>
-            <th className="px-4 py-2 text-left font-medium">P</th>
-            <th className="px-4 py-2 text-left font-medium">Driver</th>
-            <th className="px-4 py-2 text-right font-medium">Q1</th>
-            <th className="px-4 py-2 text-right font-medium">Q2</th>
-            <th className="px-4 py-2 text-right font-medium">Q3</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.Driver.driverId} className="border-t border-border">
-              <td className="px-4 py-2.5 font-mono text-muted">{row.position}</td>
-              <td className="px-4 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-4 w-1.5 rounded-full"
-                    style={{
-                      background: teamSwatch(
-                        constructorColor(row.Constructor.constructorId),
-                      ),
-                    }}
-                  />
-                  <span className="text-foreground">
-                    {row.Driver.givenName} {row.Driver.familyName}
-                  </span>
-                </div>
-              </td>
-              <td className="px-4 py-2.5 text-right font-mono text-muted">
-                {row.Q1 ?? "—"}
-              </td>
-              <td className="px-4 py-2.5 text-right font-mono text-muted">
-                {row.Q2 ?? "—"}
-              </td>
-              <td className="px-4 py-2.5 text-right font-mono text-foreground">
-                {row.Q3 ?? "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </section>
   );
 }

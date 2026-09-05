@@ -42,7 +42,7 @@ npm run dev
 
 Then open [http://localhost:3000](http://localhost:3000). The site is on `:3000`, a small ingest process is on `:4001`.
 
-Live MQTT needs an [OpenF1](https://openf1.org) account (they ask you to sponsor the project). Put the username/password in `.env`. Leave them blank and you still get historical sessions — that's what the screenshots are. During a live session OpenF1 locks the free API; the board either needs those credentials or it falls back to a labeled sample so the UI isn't empty.
+Live MQTT needs an [OpenF1](https://openf1.org) account (they ask you to sponsor the project). Put the username/password in `.env`. Leave them blank and you still get historical sessions — that's what the screenshots are. During a live session OpenF1 locks the free API, so the board waits for replay until it ends.
 
 ```
 OPENF1_USERNAME=

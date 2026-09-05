@@ -40,12 +40,13 @@ function restSnapshot(sessionKey: string) {
           sessionKey: latest ? undefined : sessionKey,
         }),
       );
+      if (snap.restricted) return snap;
       if (!snap.session) {
         throw new Error(snap.notice ?? "Could not load OpenF1 timing.");
       }
       return snap;
     },
-    ["openf1-rest-snapshot-v4", sessionKey],
+    ["openf1-rest-snapshot-v5", sessionKey],
     { revalidate: latest ? 30 : 120 },
   )();
 }

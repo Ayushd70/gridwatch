@@ -33,7 +33,3 @@ export function ingestPort() {
   const parsed = Number(process.env.INGEST_PORT ?? "4001");
   return Number.isFinite(parsed) ? parsed : 4001;
 }
-
-export function fixtureEnabled() {
-  return process.env.OPENF1_USE_FIXTURE === "1";
-}

@@ -17,9 +17,11 @@ const WS_URL = process.env.NEXT_PUBLIC_INGEST_WS ?? "";
 export function TimingBoard({
   initial,
   sessionKey,
+  fallbackMeeting,
 }: {
   initial?: TimingSnapshot;
   sessionKey?: string;
+  fallbackMeeting?: { name: string; location: string; country: string };
 }) {
   const router = useRouter();
   const [snapshot, setSnapshot] = useState<TimingSnapshot>(
@@ -120,11 +122,11 @@ export function TimingBoard({
   );
 
   const modeLabel = useMemo(() => {
+    if (snapshot.restricted) return "LOCKED";
     if (snapshot.mode === "live") return "LIVE";
-    if (snapshot.mode === "replay")
-      return snapshot.source === "fixture" ? "SAMPLE" : "REPLAY";
+    if (snapshot.mode === "replay") return "REPLAY";
     return "IDLE";
-  }, [snapshot.mode, snapshot.source]);
+  }, [snapshot.mode, snapshot.restricted]);
 
   const weather = snapshot.weather;
   const live = snapshot.mode === "live";
@@ -137,17 +139,23 @@ export function TimingBoard({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.2em] text-subtle">
-              {snapshot.meeting?.country || "Session"}
+              {snapshot.meeting?.country || fallbackMeeting?.country || "Session"}
             </p>
             <h1 className="mt-1 font-display text-4xl tracking-tight text-foreground sm:text-5xl">
-              {snapshot.meeting?.name ?? "Waiting for a session"}
+              {snapshot.meeting?.name ??
+                fallbackMeeting?.name ??
+                (snapshot.restricted ? "Live timing locked" : "Waiting for a session")}
             </h1>
             <p className="mt-2 text-sm text-muted">
-              {snapshot.session?.name ?? "No OpenF1 session loaded"}
-              {snapshot.lap
+              {snapshot.restricted
+                ? "A session is live, so the free OpenF1 feed is closed"
+                : snapshot.session?.name ?? "No OpenF1 session loaded"}
+              {!snapshot.restricted && snapshot.lap
                 ? ` · ${finishedRace ? "Finished · " : ""}Lap ${snapshot.lap.current}${snapshot.lap.total ? ` / ${snapshot.lap.total}` : ""}`
                 : ""}
-              {snapshot.lastFlag ? ` · ${snapshot.lastFlag}` : ""}
+              {!snapshot.restricted && snapshot.lastFlag
+                ? ` · ${snapshot.lastFlag}`
+                : ""}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -155,8 +163,10 @@ export function TimingBoard({
               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide ${
                 live
                   ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                  : snapshot.mode === "replay"
-                    ? "bg-sky-500/15 text-sky-800 dark:text-sky-300"
+                  : snapshot.restricted
+                    ? "bg-amber-500/15 text-amber-800 dark:text-amber-300"
+                    : snapshot.mode === "replay"
+                      ? "bg-sky-500/15 text-sky-800 dark:text-sky-300"
                     : "bg-chip text-muted"
               }`}
             >
@@ -169,9 +179,7 @@ export function TimingBoard({
             </span>
           </div>
         </div>
-        {snapshot.source !== "fixture" &&
-        !snapshot.restricted &&
-        meetingSessions.length > 1 ? (
+        {!snapshot.restricted && meetingSessions.length > 1 ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {meetingSessions.map((item) => {
               const active = String(item.key) === String(snapshot.session?.key);
@@ -246,7 +254,8 @@ export function TimingBoard({
         />
       ) : null}
 
-      <section className="panel overflow-x-auto">
+      {snapshot.restricted && snapshot.rows.length === 0 ? null : (
+        <section className="panel overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead className="text-[11px] uppercase tracking-[0.14em] text-subtle">
             <tr className="border-b border-border">
@@ -280,8 +289,9 @@ export function TimingBoard({
             {snapshot.rows.length === 0 ? (
               <tr>
                 <td colSpan={12} className="px-3 py-12 text-center text-muted">
-                  No timing rows yet. When a session is open, positions appear
-                  here.
+                  {snapshot.restricted
+                    ? "No live board while OpenF1 has the session locked."
+                    : "No timing rows yet. When a session is open, positions appear here."}
                 </td>
               </tr>
             ) : (
@@ -365,7 +375,8 @@ export function TimingBoard({
             )}
           </tbody>
         </table>
-      </section>
+        </section>
+      )}
 
       {snapshot.raceControl.length > 0 ? (
         <section className="panel p-5">

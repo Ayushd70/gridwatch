@@ -9,8 +9,10 @@ export function formatLapTime(seconds: number | null | undefined) {
 export function formatGap(value: number | string | null | undefined) {
   if (value == null || value === "") return "—";
   if (typeof value === "string") return value;
-  if (value === 0) return "LEADER";
-  return `+${value.toFixed(3)}`;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "—";
+  if (n === 0) return "LEADER";
+  return `+${n.toFixed(3)}`;
 }
 
 export function tyreCode(compound: string | null | undefined) {

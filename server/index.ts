@@ -1,14 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import mqtt from "mqtt";
 import { WebSocketServer, type WebSocket } from "ws";
-import {
-  ingestPort,
-  loadEnvFile,
-  openf1Credentials,
-  fixtureEnabled,
-} from "./env";
+import { ingestPort, loadEnvFile, openf1Credentials } from "./env";
 import { fillStoreFromRest } from "./bootstrap";
-import { sampleSnapshot } from "./fixture";
 import {
   fetchOpenF1Token,
   OpenF1Error,
@@ -166,7 +160,7 @@ async function pollLiveRest() {
   if (store.get().mode !== "live") return;
   if (!accessToken && store.get().restricted) return;
   const sessionKey = store.get().session?.key;
-  if (sessionKey == null || sessionKey === "fixture") return;
+  if (sessionKey == null) return;
   const token = accessToken ?? undefined;
   try {
     const positions = await openf1Get<OpenF1Position[]>(
@@ -198,27 +192,19 @@ function startPolling() {
 }
 
 async function startIngest() {
-  if (fixtureEnabled()) {
-    store.replaceSnapshot(sampleSnapshot());
-    return;
-  }
-
   try {
     await refreshToken();
   } catch (error) {
     console.error("OpenF1 login failed", error);
     store.setMeta({
       authenticated: false,
-      notice:
-        "OpenF1 credentials were rejected. Using historical REST or the sample board.",
+      notice: "OpenF1 credentials were rejected. Using historical REST.",
     });
   }
 
-  const ok = await bootstrapRest();
+  await bootstrapRest();
   if (accessToken) {
     await connectMqtt();
-  } else if (!ok) {
-    store.replaceSnapshot(sampleSnapshot());
   }
   startPolling();
 
