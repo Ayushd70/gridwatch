@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LastYearStrip } from "@/components/LastYearStrip";
 import { PageHeading } from "@/components/SiteChrome";
+import { LocalTime } from "@/components/LocalTime";
 import { WeekendResults } from "@/components/WeekendResults";
-import { formatWhen, teamSwatch } from "@/lib/format";
+import { teamSwatch } from "@/lib/format";
 import {
   constructorColor,
   currentTime,
@@ -73,7 +74,10 @@ export default async function ResultsPage({
         title={race?.raceName ?? calendarRace?.raceName ?? "Results"}
       >
         {race
-          ? `${race.circuit.circuitName} · ${formatWhen(`${race.date}T12:00:00Z`)}`
+          ? <>
+              {race.circuit.circuitName} ·{" "}
+              <LocalTime iso={`${race.date}T12:00:00Z`} kind="day" />
+            </>
           : calendarRace
             ? `${calendarRace.Circuit.circuitName} · ${calendarRace.Circuit.Location.locality}`
             : "Results are not published for this round yet."}

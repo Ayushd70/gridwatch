@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeading } from "@/components/SiteChrome";
+import { LocalTime } from "@/components/LocalTime";
 import { WeekendTimetable } from "@/components/WeekendTimetable";
-import { formatWhen } from "@/lib/format";
 import {
   currentTime,
   fetchCalendar,
@@ -74,7 +74,7 @@ export default async function CalendarPage() {
                     </Link>
                   ) : null}
                   <p className="font-mono text-sm text-muted">
-                    {formatWhen(start.toISOString())}
+                    <LocalTime iso={start.toISOString()} />
                   </p>
                 </div>
               </div>

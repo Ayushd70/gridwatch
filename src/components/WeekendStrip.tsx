@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatDay } from "@/lib/format";
+import { LocalTime } from "@/components/LocalTime";
 import type { RaceResult } from "@/lib/jolpica";
 
 function driverName(row: RaceResult) {
@@ -26,7 +26,9 @@ export function LastRaceCard({
       <p className="mt-1 font-display text-lg tracking-tight text-foreground">
         {last.raceName}
       </p>
-      <p className="text-xs text-muted">{formatDay(last.date)}</p>
+      <p className="text-xs text-muted">
+        <LocalTime iso={last.date} kind="day" />
+      </p>
       {podium.length > 0 ? (
         <ol className="mt-3 space-y-1 text-sm">
           {podium.map((row) => (

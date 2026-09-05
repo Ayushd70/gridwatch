@@ -1,4 +1,4 @@
-import { formatDay } from "@/lib/format";
+import { LocalTime } from "@/components/LocalTime";
 import type { LastYearAtCircuit } from "@/lib/jolpica";
 
 function driverName(data: LastYearAtCircuit["podium"][number]["Driver"]) {
@@ -28,7 +28,7 @@ export function LastYearStrip({
         {data.raceName}
       </p>
       <p className="text-xs text-muted">
-        {data.circuit.circuitName} · {formatDay(data.date)}
+        {data.circuit.circuitName} · <LocalTime iso={data.date} kind="day" />
       </p>
     </>
   );

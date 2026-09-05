@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { TimeZoneProvider } from "@/components/LocalTime";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteChrome";
+import { sanitizeTimeZone, TIME_ZONE_COOKIE } from "@/lib/format";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -75,7 +78,10 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const jar = await cookies();
+  const timeZone = sanitizeTimeZone(jar.get(TIME_ZONE_COOKIE)?.value);
+
   return (
     <html
       lang="en"
@@ -89,11 +95,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="flex min-h-full flex-col">
-        <SiteHeader />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">
-          {children}
-        </main>
-        <SiteFooter />
+        <TimeZoneProvider timeZone={timeZone}>
+          <SiteHeader />
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">
+            {children}
+          </main>
+          <SiteFooter />
+        </TimeZoneProvider>
         <Analytics />
       </body>
     </html>

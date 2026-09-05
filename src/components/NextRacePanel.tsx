@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { RaceCountdown } from "@/components/RaceCountdown";
+import { LocalTime } from "@/components/LocalTime";
 import { WeekendTimetable } from "@/components/WeekendTimetable";
-import { formatWhen } from "@/lib/format";
 import { currentTime, raceDate, weekendSessions, type Race } from "@/lib/jolpica";
 
 export function NextRacePanel({
@@ -32,7 +32,7 @@ export function NextRacePanel({
             {race.Circuit.Location.country}
           </p>
           <p className="mt-1 text-sm text-foreground">
-            Lights out {formatWhen(start.toISOString())}
+            Lights out <LocalTime iso={start.toISOString()} />
           </p>
 
           {sessions.length > 0 ? <WeekendTimetable race={race} now={now} /> : null}

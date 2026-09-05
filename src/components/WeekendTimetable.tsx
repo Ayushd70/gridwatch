@@ -1,4 +1,7 @@
-import { formatIstWeekday, formatSessionWhen, istDayKey } from "@/lib/format";
+"use client";
+
+import { useTimeZone } from "@/components/LocalTime";
+import { dayKey, formatSessionWhen, formatWeekday } from "@/lib/format";
 import { currentTime, weekendSessions, type Race } from "@/lib/jolpica";
 
 export function WeekendTimetable({
@@ -8,6 +11,7 @@ export function WeekendTimetable({
   race: Race;
   now?: number;
 }) {
+  const timeZone = useTimeZone();
   const sessions = weekendSessions(race);
   const durationMs = (label: string) =>
     label === "Race" ? 2 * 60 * 60 * 1000 : 60 * 60 * 1000;
@@ -21,7 +25,7 @@ export function WeekendTimetable({
     sessions.at(-1);
   const days = new Map<string, typeof sessions>();
   for (const session of sessions) {
-    const key = istDayKey(session.at);
+    const key = dayKey(session.at, timeZone);
     const list = days.get(key) ?? [];
     list.push(session);
     days.set(key, list);
@@ -34,9 +38,9 @@ export function WeekendTimetable({
       {[...days.values()].map((day) => {
         const first = day[0];
         return (
-          <li key={istDayKey(first.at)}>
+          <li key={dayKey(first.at, timeZone)}>
             <p className="text-[11px] uppercase tracking-[0.14em] text-subtle">
-              {formatIstWeekday(first.at)}
+              {formatWeekday(first.at, timeZone)}
             </p>
             <ol className="mt-1.5 space-y-1">
               {day.map((session) => {
@@ -66,7 +70,7 @@ export function WeekendTimetable({
                       ) : null}
                     </span>
                     <span className="shrink-0 font-mono text-xs text-subtle">
-                      {formatSessionWhen(session.at)}
+                      {formatSessionWhen(session.at, timeZone)}
                     </span>
                   </li>
                 );

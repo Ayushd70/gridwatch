@@ -36,66 +36,99 @@ export function tyreClass(compound: string | null | undefined) {
   return "tyre-unknown";
 }
 
-/** Display clocks in India Standard Time. */
-export const DISPLAY_TIME_ZONE = "Asia/Kolkata";
+export const TIME_ZONE_COOKIE = "gridwatch-tz";
 
-const istDate = {
-  timeZone: DISPLAY_TIME_ZONE,
-} as const;
+export function viewerTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+export function isValidTimeZone(zone: string) {
+  if (!/^[A-Za-z0-9_+\-/]{1,80}$/.test(zone)) return false;
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: zone }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function sanitizeTimeZone(zone?: string | null) {
+  if (!zone) return "UTC";
+  return isValidTimeZone(zone) ? zone : "UTC";
+}
 
 export function teamSwatch(color: string) {
   const hex = color.replace("#", "");
   return `#${hex}`;
 }
 
-export function formatWhen(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return `${new Intl.DateTimeFormat("en-IN", {
-    ...istDate,
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date)} IST`;
+function asDate(iso: string | Date) {
+  return iso instanceof Date ? iso : new Date(iso);
 }
 
-export function formatDay(isoOrDate: string | null | undefined) {
+export function formatWhen(
+  iso: string | null | undefined,
+  timeZone = "UTC",
+) {
+  if (!iso) return "—";
+  const date = asDate(iso);
+  if (Number.isNaN(date.getTime())) return typeof iso === "string" ? iso : "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: sanitizeTimeZone(timeZone),
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(date);
+}
+
+export function formatDay(
+  isoOrDate: string | null | undefined,
+  timeZone = "UTC",
+) {
   if (!isoOrDate) return "—";
   const date = new Date(
     isoOrDate.includes("T") ? isoOrDate : `${isoOrDate}T12:00:00Z`,
   );
   if (Number.isNaN(date.getTime())) return isoOrDate;
-  return new Intl.DateTimeFormat("en-IN", {
-    ...istDate,
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: sanitizeTimeZone(timeZone),
     dateStyle: "medium",
   }).format(date);
 }
 
-export function formatSessionWhen(iso: string | Date) {
-  const date = iso instanceof Date ? iso : new Date(iso);
+export function formatSessionWhen(iso: string | Date, timeZone = "UTC") {
+  const date = asDate(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return `${new Intl.DateTimeFormat("en-IN", {
-    ...istDate,
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: sanitizeTimeZone(timeZone),
     hour: "numeric",
     minute: "2-digit",
-  }).format(date)} IST`;
+    timeZoneName: "short",
+  }).format(date);
 }
 
-export function formatIstWeekday(iso: string | Date) {
-  const date = iso instanceof Date ? iso : new Date(iso);
+export function formatWeekday(iso: string | Date, timeZone = "UTC") {
+  const date = asDate(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-IN", {
-    ...istDate,
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: sanitizeTimeZone(timeZone),
     weekday: "long",
     day: "numeric",
     month: "short",
   }).format(date);
 }
 
-export function istDayKey(iso: string | Date) {
-  const date = iso instanceof Date ? iso : new Date(iso);
+export function dayKey(iso: string | Date, timeZone = "UTC") {
+  const date = asDate(iso);
   return new Intl.DateTimeFormat("en-CA", {
-    ...istDate,
+    timeZone: sanitizeTimeZone(timeZone),
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
