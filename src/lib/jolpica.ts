@@ -381,20 +381,54 @@ export function nextOrCurrentRace(races: Race[], now = new Date(currentTime())) 
     (a, b) => raceDate(a).getTime() - raceDate(b).getTime(),
   );
   return (
-    sorted.find((race) => raceDate(race).getTime() + 3 * 60 * 60 * 1000 > now.getTime()) ??
+    sorted.find((race) => raceDate(race).getTime() + 4 * 60 * 60 * 1000 > now.getTime()) ??
     sorted.at(-1) ??
     null
   );
 }
 
+export function raceFinished(race: Pick<Race, "date" | "time">, now = currentTime()) {
+  return raceDate(race).getTime() + 4 * 60 * 60 * 1000 < now;
+}
+
+export function weekendStarted(race: Race, now = currentTime()) {
+  const first = weekendSessions(race)[0];
+  return (first?.at.getTime() ?? raceDate(race).getTime()) <= now;
+}
+
+export function lastCompletedRace(races: Race[], now = currentTime()) {
+  return (
+    [...races]
+      .filter((race) => raceFinished(race, now))
+      .sort((a, b) => raceDate(b).getTime() - raceDate(a).getTime())[0] ?? null
+  );
+}
+
+export async function resolveLastRace(races: Race[]) {
+  const official = await fetchLastResults();
+  const completed = lastCompletedRace(races);
+  if (!completed) return official;
+  if (Number(official.round) >= Number(completed.round)) return official;
+  const published = await fetchRaceResults(completed.round);
+  return {
+    season: completed.season,
+    round: completed.round,
+    raceName: published?.raceName ?? completed.raceName,
+    date: published?.date ?? completed.date,
+    circuit: published?.circuit ?? completed.Circuit,
+    results: published?.results ?? [],
+  };
+}
+
 /** First session's UTC date through four hours after lights out. */
 export function isCurrentWeekend(race: Race, now = currentTime()) {
+  if (raceFinished(race, now)) return false;
   const sessions = weekendSessions(race);
   const first = sessions[0]?.at;
   const start = first
     ? Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), first.getUTCDate())
     : new Date(`${race.date}T00:00:00Z`).getTime();
-  return now >= start && now < raceDate(race).getTime() + 4 * 60 * 60 * 1000;
+  return now >= start;
 }
 
 export function constructorColor(id: string) {

@@ -5,16 +5,19 @@ import { LastRaceCard } from "@/components/WeekendStrip";
 import { LastYearStrip } from "@/components/LastYearStrip";
 import {
   fetchCalendar,
-  fetchLastResults,
   fetchLastYearAtCircuit,
+  fetchQualifying,
   isCurrentWeekend,
   nextOrCurrentRace,
+  resolveLastRace,
 } from "@/lib/jolpica";
 import { getTimingSnapshot } from "@/lib/session-snapshot";
 import {
   fetchWeekendSessionResults,
+  fromErgastQualifying,
   fromTimingSnapshot,
   isQualifyingSnapshot,
+  meetingMatchesRace,
 } from "@/lib/weekend-results";
 
 export const dynamic = "force-dynamic";
@@ -27,36 +30,50 @@ export default async function HomePage({
 }) {
   const query = await searchParams;
   const sessionKey = typeof query.session === "string" ? query.session : undefined;
-  const [initial, last, calendar] = await Promise.all([
+  const [initial, calendar] = await Promise.all([
     getTimingSnapshot(sessionKey),
-    fetchLastResults(),
     fetchCalendar(),
   ]);
   const featured = nextOrCurrentRace(calendar.races);
-  const [lastYear, weekendResults] = await Promise.all([
+  const last = await resolveLastRace(calendar.races);
+  const currentWeekend = Boolean(featured && isCurrentWeekend(featured));
+  const lastCalendar = calendar.races.find((race) => race.round === last.round);
+  const weekendRace = currentWeekend ? featured : lastCalendar;
+  const attachOpenF1 = meetingMatchesRace(initial.meeting, weekendRace);
+  const [lastYear, weekendResults, officialQuali] = await Promise.all([
     fetchLastYearAtCircuit(
       featured?.Circuit.circuitId ?? last.circuit?.circuitId,
       calendar.season,
     ),
-    featured
+    weekendRace
       ? fetchWeekendSessionResults({
           season: calendar.season,
-          round: featured.round,
-          openF1Sessions: initial.meetingSessions,
-          timingQualifying: isQualifyingSnapshot(initial)
-            ? fromTimingSnapshot(initial)
-            : undefined,
+          round: weekendRace.round,
+          openF1Sessions: attachOpenF1 ? initial.meetingSessions : [],
+          timingQualifying:
+            attachOpenF1 && isQualifyingSnapshot(initial)
+              ? fromTimingSnapshot(initial)
+              : undefined,
         })
       : null,
+    weekendRace ? fetchQualifying(weekendRace.round) : Promise.resolve([]),
   ]);
-  const currentWeekend = Boolean(featured && isCurrentWeekend(featured));
+  const weekend =
+    weekendResults == null
+      ? null
+      : {
+          ...weekendResults,
+          qualifying: officialQuali.length
+            ? fromErgastQualifying(officialQuali)
+            : weekendResults.qualifying,
+        };
 
   return (
     <>
       {featured ? (
         <NextRacePanel race={featured} currentWeekend={currentWeekend} />
       ) : null}
-      {weekendResults ? <WeekendResults {...weekendResults} /> : null}
+      {currentWeekend && weekend ? <WeekendResults {...weekend} /> : null}
       {lastYear ? (
         <div className="mb-6">
           <LastYearStrip
@@ -70,16 +87,32 @@ export default async function HomePage({
         initial={initial}
         sessionKey={sessionKey}
         fallbackMeeting={
-          featured
+          initial.meeting
             ? {
-                name: featured.raceName,
-                location: featured.Circuit.Location.locality,
-                country: featured.Circuit.Location.country,
+                name: initial.meeting.name,
+                location: initial.meeting.location,
+                country: initial.meeting.country,
               }
-            : undefined
+            : currentWeekend && featured
+              ? {
+                  name: featured.raceName,
+                  location: featured.Circuit.Location.locality,
+                  country: featured.Circuit.Location.country,
+                }
+              : lastCalendar
+                ? {
+                    name: lastCalendar.raceName,
+                    location: lastCalendar.Circuit.Location.locality,
+                    country: lastCalendar.Circuit.Location.country,
+                  }
+                : undefined
         }
       />
-      <LastRaceCard last={last} />
+      <LastRaceCard last={last}>
+        {!currentWeekend && weekend ? (
+          <WeekendResults {...weekend} embedded />
+        ) : null}
+      </LastRaceCard>
     </>
   );
 }

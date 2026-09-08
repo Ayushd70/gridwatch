@@ -7,17 +7,16 @@ import { WeekendResults } from "@/components/WeekendResults";
 import { teamSwatch } from "@/lib/format";
 import {
   constructorColor,
-  currentTime,
   fetchCalendar,
-  fetchLastResults,
   fetchLastYearAtCircuit,
   fetchQualifying,
   fetchRaceResults,
   fetchSprint,
   nextOrCurrentRace,
   placesGained,
-  raceDate,
-  weekendSessions,
+  raceFinished,
+  resolveLastRace,
+  weekendStarted,
   type RaceResult,
 } from "@/lib/jolpica";
 import {
@@ -35,22 +34,16 @@ export default async function ResultsPage({
   searchParams: Promise<{ round?: string | string[] }>;
 }) {
   const query = await searchParams;
-  const [calendar, last] = await Promise.all([fetchCalendar(), fetchLastResults()]);
-  const now = currentTime();
+  const calendar = await fetchCalendar();
+  const last = await resolveLastRace(calendar.races);
   const featured = nextOrCurrentRace(calendar.races);
-  const weekendStarted = (race: (typeof calendar.races)[number]) => {
-    const first = weekendSessions(race)[0];
-    return (first?.at.getTime() ?? raceDate(race).getTime()) <= now;
-  };
-  const raceFinished = (race: (typeof calendar.races)[number]) =>
-    raceDate(race).getTime() + 4 * 60 * 60 * 1000 < now;
   const defaultRound =
     featured && weekendStarted(featured) && !raceFinished(featured)
       ? featured.round
       : last.round;
   const round = typeof query.round === "string" ? query.round : defaultRound;
   const calendarRace = calendar.races.find((item) => item.round === round);
-  const [race, qualifying, sprint, weekend] = await Promise.all([
+  const [fetchedRace, qualifying, sprint, weekend] = await Promise.all([
     fetchRaceResults(round),
     fetchQualifying(round),
     fetchSprint(round),
@@ -59,6 +52,19 @@ export default async function ResultsPage({
       round,
     }),
   ]);
+  const fallbackCircuit = last.circuit ?? calendarRace?.Circuit;
+  const race =
+    fetchedRace ??
+    (round === last.round && last.results.length && fallbackCircuit
+      ? {
+          season: last.season,
+          round: last.round,
+          raceName: last.raceName,
+          date: last.date ?? calendarRace?.date ?? "",
+          circuit: fallbackCircuit,
+          results: last.results,
+        }
+      : null);
   const qualiRows = qualifying.length
     ? fromErgastQualifying(qualifying)
     : weekend.qualifying;
@@ -85,7 +91,6 @@ export default async function ResultsPage({
 
       <div className="mb-2 flex flex-wrap gap-2">
         {calendar.races.map((item) => {
-          const done = raceFinished(item);
           if (!weekendStarted(item) && item.round !== last.round) return null;
           const active = item.round === round;
           return (

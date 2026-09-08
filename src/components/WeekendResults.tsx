@@ -1,5 +1,8 @@
 import { teamSwatch } from "@/lib/format";
-import type { ClassifiedDriver } from "@/lib/weekend-results";
+import {
+  hasClassificationTimes,
+  type ClassifiedDriver,
+} from "@/lib/weekend-results";
 
 function hasQualiSplits(rows: ClassifiedDriver[]) {
   return rows.some((row) => row.q1 || row.q2 || row.q3);
@@ -10,28 +13,38 @@ export function WeekendResults({
   qualifying,
   sprintQualifying = [],
   sprint = [],
+  embedded = false,
 }: {
   practices: { code: string; label: string; rows: ClassifiedDriver[] }[];
   qualifying: ClassifiedDriver[];
   sprintQualifying?: ClassifiedDriver[];
   sprint?: ClassifiedDriver[];
+  embedded?: boolean;
 }) {
   const practiceCards = practices.filter((item) => item.rows.length > 0);
+  const qualiRows = hasClassificationTimes(qualifying) ? qualifying : [];
+  const sprintQualiRows = hasClassificationTimes(sprintQualifying)
+    ? sprintQualifying
+    : [];
+  const sprintRows = hasClassificationTimes(sprint) ? sprint : [];
   if (
     practiceCards.length === 0 &&
-    qualifying.length === 0 &&
-    sprintQualifying.length === 0 &&
-    sprint.length === 0
+    qualiRows.length === 0 &&
+    sprintQualiRows.length === 0 &&
+    sprintRows.length === 0
   ) {
     return null;
   }
 
   return (
-    <div className="mb-6 space-y-3">
+    <div className={embedded ? "space-y-3" : "mb-6 space-y-3"}>
       {practiceCards.length > 0 ? (
         <div className="grid gap-3 md:grid-cols-3">
           {practiceCards.map((session) => (
-            <section key={session.code} className="panel p-4">
+            <section
+              key={session.code}
+              className={embedded ? "rounded-xl bg-surface-2 p-3" : "panel p-4"}
+            >
               <p className="text-[11px] uppercase tracking-[0.16em] text-subtle">
                 {session.label}
               </p>
@@ -52,14 +65,18 @@ export function WeekendResults({
         </div>
       ) : null}
 
-      {sprintQualifying.length > 0 ? (
-        <ClassificationTable title="Sprint Qualifying" rows={sprintQualifying} />
+      {sprintQualiRows.length > 0 ? (
+        <ClassificationTable
+          title="Sprint Qualifying"
+          rows={sprintQualiRows}
+          embedded={embedded}
+        />
       ) : null}
-      {sprint.length > 0 ? (
-        <ClassificationTable title="Sprint" rows={sprint} />
+      {sprintRows.length > 0 ? (
+        <ClassificationTable title="Sprint" rows={sprintRows} embedded={embedded} />
       ) : null}
-      {qualifying.length > 0 ? (
-        <ClassificationTable title="Qualifying" rows={qualifying} />
+      {qualiRows.length > 0 ? (
+        <ClassificationTable title="Qualifying" rows={qualiRows} embedded={embedded} />
       ) : null}
     </div>
   );
@@ -68,13 +85,17 @@ export function WeekendResults({
 export function ClassificationTable({
   title,
   rows,
+  embedded = false,
 }: {
   title: string;
   rows: ClassifiedDriver[];
+  embedded?: boolean;
 }) {
   const splits = hasQualiSplits(rows);
   return (
-    <section className="panel">
+    <section
+      className={embedded ? "overflow-hidden rounded-xl border border-border" : "panel"}
+    >
       <h2 className="border-b border-border px-4 py-3 font-display text-xl text-foreground">
         {title}
       </h2>

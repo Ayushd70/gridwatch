@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { LocalTime } from "@/components/LocalTime";
 import type { RaceResult } from "@/lib/jolpica";
@@ -8,6 +9,7 @@ function driverName(row: RaceResult) {
 
 export function LastRaceCard({
   last,
+  children,
 }: {
   last: {
     round: string;
@@ -15,6 +17,7 @@ export function LastRaceCard({
     date: string | null;
     results: RaceResult[];
   };
+  children?: ReactNode;
 }) {
   const podium = last.results.slice(0, 3);
 
@@ -47,6 +50,7 @@ export function LastRaceCard({
       >
         Full results
       </Link>
+      {children ? <div className="mt-4 space-y-3">{children}</div> : null}
     </section>
   );
 }

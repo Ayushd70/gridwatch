@@ -1,5 +1,5 @@
 import { formatGap, formatLapTime } from "@/lib/format";
-import { constructorColor, type QualifyingResult } from "@/lib/jolpica";
+import { constructorColor, type QualifyingResult, type Race } from "@/lib/jolpica";
 import type { OpenF1Driver, OpenF1SessionResult } from "../../server/openf1";
 import type { MeetingSession, TimingSnapshot } from "../../shared/timing";
 
@@ -126,6 +126,29 @@ export function fromTimingSnapshot(snapshot: TimingSnapshot): ClassifiedDriver[]
 export function isQualifyingSnapshot(snapshot: TimingSnapshot) {
   const label = `${snapshot.session?.name ?? ""} ${snapshot.session?.type ?? ""}`;
   return /qualifying/i.test(label) && !/sprint/i.test(label);
+}
+
+export function meetingMatchesRace(
+  meeting: { name: string; location: string; country: string } | null | undefined,
+  race: Race | null | undefined,
+) {
+  if (!meeting || !race) return false;
+  const hay = `${meeting.name} ${meeting.location} ${meeting.country}`.toLowerCase();
+  return [
+    race.raceName,
+    race.Circuit.circuitName,
+    race.Circuit.Location.locality,
+    race.Circuit.Location.country,
+  ].some((bit) => {
+    const needle = bit.toLowerCase();
+    return needle.length >= 3 && hay.includes(needle);
+  });
+}
+
+export function hasClassificationTimes(rows: ClassifiedDriver[]) {
+  return (
+    rows.filter((row) => row.time || row.q1 || row.q2 || row.q3).length >= 3
+  );
 }
 
 async function fetchAlphaRoundResults(season: string, round: string) {
